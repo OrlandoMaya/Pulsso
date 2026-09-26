@@ -5,9 +5,8 @@ Calendario semanal y mensual con eventos, tareas recurrentes que se pueden tacha
 Monorepo con **pnpm workspaces**:
 
 ```
-apps/
-└── api/   # NestJS + MongoDB Atlas (Mongoose) + JWT
-            # (el frontend React + shadcn irá en apps/web)
+backend/    # API: NestJS + MongoDB Atlas (Mongoose) + JWT
+frontend/   # App: React 19 + Vite + Tailwind v4 + shadcn/ui
 ```
 
 ## Requisitos
@@ -23,13 +22,18 @@ apps/
 3. En **Database → Connect → Drivers** copia la cadena `mongodb+srv://…`
    y agrégale el nombre de la base, p. ej. `…mongodb.net/pulsso?retryWrites=true&w=majority`.
 
-## Correr la API
+## Correr el proyecto
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env   # pega tu MONGODB_URI y un JWT_SECRET largo
-pnpm dev:api                             # http://localhost:3000/api
+cp backend/.env.example backend/.env   # pega tu MONGODB_URI y un JWT_SECRET largo
+pnpm dev:api                           # API en http://localhost:3000/api
+pnpm dev:web                           # App en http://localhost:5173 (reenvía /api al backend)
 ```
+
+Abre http://localhost:5173, crea tu cuenta y listo.
+
+### Variables del backend (`backend/.env`)
 
 | Variable | Descripción |
 |---|---|
@@ -39,14 +43,48 @@ pnpm dev:api                             # http://localhost:3000/api
 | `PORT` | Puerto (por defecto `3000`) |
 | `CORS_ORIGIN` | Origen(es) del frontend separados por coma (por defecto `http://localhost:5173`) |
 
-## Pruebas
+### Variables del frontend (`frontend/.env`, opcional)
+
+| Variable | Descripción |
+|---|---|
+| `VITE_API_URL` | URL del backend en producción, p. ej. `https://api.midominio.com`. En desarrollo déjala vacía. |
+
+## Pruebas y calidad
 
 ```bash
-pnpm --filter @pulsso/api test        # unitarias (recurrencia)
-pnpm --filter @pulsso/api test:e2e    # e2e: Mongo en memoria, o MONGODB_TEST_URI si la defines
+pnpm test                                   # backend (recurrencia) + frontend (columnas, fechas, reglas)
+pnpm --filter @pulsso/backend test:e2e      # e2e del API: Mongo en memoria, o MONGODB_TEST_URI si la defines
+pnpm lint                                   # tipos (y oxlint en el frontend)
+pnpm format                                 # prettier
 ```
 
 > `MONGODB_TEST_URI` debe apuntar a una base **solo para pruebas**: la suite la borra al empezar.
+
+## Frontend
+
+- **Login / Crear cuenta** (`/login`): la sesión se guarda en el navegador; si el token vence, vuelve al login.
+- **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Diario** con las tareas recurrentes tachables,
+  eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
+  un evento a esa hora; clic en el día abre su modal.
+- **Mes** (`/mes/:fecha`): cada día muestra sus tareas tachables, su avance (hechas/total), hasta dos filas
+  de eventos (los simultáneos comparten fila) y "+N más". En móvil se resume con puntos.
+- **Modal del día** (`?dia=YYYY-MM-DD`): lista "Por hacer" con casillas, agregar una tarea solo para ese
+  día, agenda con los eventos "Al mismo tiempo" y opciones para editar, quitar solo ese día o eliminar.
+- **Editor**: evento o tarea recurrente, con repetición (diaria, entre semana, días elegidos, mensual,
+  anual), fecha de fin opcional y la opción "Se puede tachar".
+
+Estructura:
+
+```
+frontend/src/
+├── components/ui/        # componentes shadcn (button, dialog, select, checkbox…)
+├── features/auth/        # AuthProvider, LoginPage, RequireAuth
+├── features/calendar/    # CalendarPage, Sidebar, Toolbar, DayDialog, EditorDialog, week/, month/
+└── lib/                  # api, fechas, colores, overlap (columnas), recurrence (RRULE)
+```
+
+`components.json` está listo para agregar más componentes con `pnpm dlx shadcn@latest add <componente>`
+dentro de `frontend/`.
 
 ## Cómo funciona
 
@@ -62,7 +100,7 @@ pnpm --filter @pulsso/api test:e2e    # e2e: Mongo en memoria, o MONGODB_TEST_UR
 - **Tachar**: se guarda por ocurrencia (evento/tarea + día). Tachar "Meditar" el lunes no lo tacha
   el martes.
 - **Eventos a la misma hora**: la API los devuelve ordenados por hora; el frontend los reparte en
-  columnas.
+  columnas (`frontend/src/lib/overlap.ts`).
 
 ## Endpoints (`/api`)
 
