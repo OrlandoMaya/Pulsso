@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { ExdateDto } from '../events/dto/event.dto';
-import { CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
+import { CarryOverTasksDto, CreateTaskDto, ReorderTasksDto, UpdateTaskDto } from './dto/task.dto';
 import { TasksService } from './tasks.service';
 
 @Controller('tasks')
@@ -12,6 +12,17 @@ export class TasksController {
   @Get()
   findAll(@CurrentUser() user: AuthUser) {
     return this.tasks.findAll(user.userId);
+  }
+
+  @Put('order')
+  reorder(@CurrentUser() user: AuthUser, @Body() dto: ReorderTasksDto) {
+    return this.tasks.reorder(user.userId, dto.ids);
+  }
+
+  @Post('carry-over')
+  @HttpCode(200)
+  carryOver(@CurrentUser() user: AuthUser, @Body() dto: CarryOverTasksDto) {
+    return this.tasks.carryOver(user.userId, dto.from, dto.to, dto.calendarIds);
   }
 
   @Get(':id')

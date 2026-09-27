@@ -5,7 +5,7 @@ import { toJSONOptions } from '../../common/utils/serialize';
 export const DAY_LISTS = ['personal', 'work'] as const;
 export type DayList = (typeof DAY_LISTS)[number];
 
-/** Tarea/objetivo de un día concreto, con descripción. No se repite. */
+/** Antiguo objetivo del día; hoy se migra a Task (ver day-items.migration.ts) */
 @Schema({ collection: 'day_items', timestamps: true, toJSON: toJSONOptions })
 export class DayItem {
   @Prop({ type: SchemaTypes.ObjectId, required: true })

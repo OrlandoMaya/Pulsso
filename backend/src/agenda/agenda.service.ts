@@ -14,6 +14,10 @@ export interface AgendaTask {
   calendarId: string;
   color: string;
   title: string;
+  description: string;
+  /** false = tarea normal (solo ese día) */
+  recurring: boolean;
+  position: number;
   done: boolean;
 }
 
@@ -83,6 +87,9 @@ export class AgendaService {
           calendarId: String(task.calendarId),
           color: colorOf.get(String(task.calendarId))!,
           title: task.title,
+          description: task.description ?? '',
+          recurring: !/COUNT=1(;|$)/.test(task.rrule),
+          position: task.position ?? 0,
           done: isDone(date, task.id),
         });
       }
@@ -112,7 +119,7 @@ export class AgendaService {
     }
 
     for (const day of days.values()) {
-      day.tasks.sort((a, b) => a.title.localeCompare(b.title, 'es'));
+      day.tasks.sort((a, b) => a.position - b.position || a.title.localeCompare(b.title, 'es'));
       // Primero los de día completo, luego por hora
       day.events.sort(
         (a, b) =>

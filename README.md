@@ -94,18 +94,18 @@ pnpm format                                 # prettier
 ## Frontend
 
 - **Login / Crear cuenta** (`/login`): la sesión se guarda en el navegador; si el token vence, vuelve al login.
-- **Día** (`/dia/:fecha?lista=trabajo|personal`): lista de tareas del día con **descripción**, separada en
-  **Personal** y **Trabajo** (se recuerda la última usada). Ideal para los objetivos diarios: se tachan, se
-  editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮ (mouse, táctil o
-  teclado: Espacio + flechas), se mueven a mañana o a la otra lista, y "Pasar
-  pendientes a mañana" lleva las no hechas al día siguiente. Al lado, la agenda del día (eventos y recurrentes).
+- **Día** (`/dia/:fecha?categoria=<id>`): lista de **tareas** del día (las mismas que ves en la semana, el mes y el
+  modal), con **descripción**, filtro por **categoría** ("Todas", Trabajo, Personal…; se recuerda la última).
+  Se tachan, se editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮, se pasan a
+  mañana o a otra categoría, y "Pasar pendientes a mañana" mueve las tareas normales no hechas al día siguiente.
+  Al lado, los eventos del día.
 - **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Tareas** con las tareas del día para tachar,
   eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
   un evento a esa hora; clic en el día abre su modal.
 - **Mes** (`/mes/:fecha`): cada día muestra sus tareas tachables, su avance (hechas/total), hasta dos filas
   de eventos (los simultáneos comparten fila) y "+N más". En móvil se resume con puntos.
-- **Modal del día** (`?dia=YYYY-MM-DD`): lista "Por hacer" con casillas, agregar una tarea solo para ese
-  día, agenda con los eventos "Al mismo tiempo" y opciones para editar, quitar solo ese día o eliminar.
+- **Modal del día** (`?dia=YYYY-MM-DD`): la misma lista de tareas y el mismo formulario para agregar que la vista Día,
+  y debajo los eventos (los que coinciden en hora, "Al mismo tiempo").
 - **Modo oscuro**: Claro / Oscuro / Sistema desde el botón de la luna o el menú de cuenta (también en el
   login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
 - **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
@@ -165,17 +165,14 @@ dentro de `frontend/`.
 | `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable?, allDay? }` (`allDay`: día completo, solo usa la fecha de `start`) |
 | `GET` `PATCH` `DELETE` | `/events/:id` | Ver / editar (`rrule: null` quita la repetición) / borrar |
 | `POST` | `/events/:id/exdates` | `{ date }` borra solo esa ocurrencia |
-| `GET` `POST` | `/tasks` | Tareas recurrentes sin hora `{ calendarId, title, startDate, rrule }` |
+| `GET` `POST` | `/tasks` | Tareas `{ calendarId, title, description?, startDate, rrule }` (normal = `FREQ=DAILY;COUNT=1`) |
 | `PATCH` `DELETE` | `/tasks/:id` | Editar / borrar |
 | `POST` | `/tasks/:id/exdates` | `{ date }` quita la tarea solo ese día |
 | `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha |
 | `GET` | `/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD[&calendarIds=a,b]` | Días del rango (vista semana/mes, máx. 62 días) |
 | `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
-| `GET` | `/day-items?date=YYYY-MM-DD&list=personal\|work` | Lista de tareas del día (vista **Día**), en orden |
-| `POST` | `/day-items` | `{ date, list, title, description? }` agrega al final |
-| `PATCH` `DELETE` | `/day-items/:id` | Editar `{ title?, description?, done?, date?, list? }` (cambiar `date`/`list` la mueve) / borrar |
-| `PUT` | `/day-items/order` | `{ date, list, ids }` nuevo orden |
-| `POST` | `/day-items/carry-over` | `{ from, to, list }` pasa las pendientes a otro día |
+| `PUT` | `/tasks/order` | `{ ids }` nuevo orden de las tareas |
+| `POST` | `/tasks/carry-over` | `{ from, to, calendarIds? }` pasa las tareas normales no hechas a otro día |
 
 Cada día de la agenda tiene esta forma:
 

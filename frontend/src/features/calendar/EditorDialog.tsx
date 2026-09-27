@@ -51,6 +51,7 @@ const schema = z
     days: z.array(z.string()),
     until: z.string().optional(),
     notes: z.string().max(2000).optional(),
+    description: z.string().max(5000).optional(),
   })
   .refine((v) => v.kind === 'task' || v.allDay || v.endTime > v.startTime, {
     path: ['endTime'],
@@ -138,6 +139,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       startTime: event.allDay ? '09:00' : event.start.slice(11, 16),
       endTime: event.allDay ? '10:00' : event.end.slice(11, 16),
       notes: event.notes ?? '',
+      description: '',
     }
   }
   if (task) {
@@ -151,6 +153,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       startTime: '09:00',
       endTime: '10:00',
       notes: '',
+      description: task.description ?? '',
     }
   }
   const t = target.mode === 'create' ? target : null
@@ -168,6 +171,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
     startTime: time,
     endTime: endAfter(time),
     notes: '',
+    description: '',
   }
 }
 
@@ -388,9 +392,13 @@ function EditorForm({
         </>
       )}
 
-      {isEvent && (
+      {isEvent ? (
         <Field label="Notas" htmlFor="notes">
           <Textarea id="notes" rows={2} placeholder="Opcional" {...register('notes')} />
+        </Field>
+      ) : (
+        <Field label="Descripción" htmlFor="description">
+          <Textarea id="description" rows={2} placeholder="Pasos, notas… (opcional)" {...register('description')} />
         </Field>
       )}
 

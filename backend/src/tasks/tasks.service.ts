@@ -38,6 +38,8 @@ export class TasksService {
     this.checkDate(dto.startDate);
     return this.tasks.create({
       ...dto,
+      description: dto.description ?? '',
+      position: await this.nextPosition(userId),
       userId: new Types.ObjectId(userId),
       calendarId: new Types.ObjectId(dto.calendarId),
     });
@@ -52,6 +54,7 @@ export class TasksService {
     if (dto.startDate) this.checkDate(dto.startDate);
     task.set({
       title: dto.title ?? task.title,
+      description: dto.description ?? task.description,
       startDate: dto.startDate ?? task.startDate,
       rrule: dto.rrule ?? task.rrule,
     });
@@ -73,6 +76,58 @@ export class TasksService {
     await this.tasks.updateOne({ _id: id, userId }, { $addToSet: { exdates: date } });
     await this.completions.deleteMany({ userId, sourceId: id, date });
     return this.findOne(userId, id);
+  }
+
+  /** Cambia el orden: los ids dados quedan en ese orden, arriba del resto */
+  async reorder(userId: string, ids: string[]) {
+    const owned = await this.tasks.countDocuments({ userId, _id: { $in: ids } });
+    if (owned !== new Set(ids).size) throw new NotFoundException('Tarea no encontrada');
+    await this.tasks.bulkWrite(
+      ids.map((id, position) => ({
+        updateOne: {
+          filter: { _id: new Types.ObjectId(id), userId: new Types.ObjectId(userId) },
+          update: { $set: { position } },
+        },
+      })),
+    );
+    return { ok: true };
+  }
+
+  /** Pasa las tareas normales (de un solo día) no hechas de `from` a `to` */
+  async carryOver(userId: string, from: string, to: string, calendarIds?: string[]) {
+    this.checkDate(from);
+    this.checkDate(to);
+    if (from === to) throw new BadRequestException('Elige un día distinto');
+    const candidates = await this.tasks
+      .find({
+        userId,
+        startDate: from,
+        rrule: /COUNT=1(;|$)/,
+        ...(calendarIds?.length && { calendarId: { $in: calendarIds } }),
+      })
+      .exec();
+    const done = new Set(
+      (
+        await this.completions
+          .find(
+            { userId, date: from, sourceId: { $in: candidates.map((t) => t._id) } },
+            { sourceId: 1 },
+          )
+          .lean()
+          .exec()
+      ).map((c) => String(c.sourceId)),
+    );
+    const pending = candidates.filter((t) => !done.has(t.id));
+    await this.tasks.updateMany(
+      { _id: { $in: pending.map((t) => t._id) }, userId },
+      { $set: { startDate: to } },
+    );
+    return { moved: pending.length };
+  }
+
+  private async nextPosition(userId: string) {
+    const last = await this.tasks.findOne({ userId }).sort({ position: -1 }).lean().exec();
+    return last ? (last.position ?? 0) + 1 : 0;
   }
 
   private checkDate(date: string) {

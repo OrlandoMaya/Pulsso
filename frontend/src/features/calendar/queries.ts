@@ -143,7 +143,7 @@ export function useToggleCompletion() {
 }
 
 export type EventInput = Omit<CalendarEvent, 'id' | 'exdates'>
-export type TaskInput = Omit<Task, 'id' | 'exdates'>
+export type TaskInput = Omit<Task, 'id' | 'exdates' | 'position'>
 
 export function useSaveEvent() {
   const qc = useQueryClient()
@@ -186,6 +186,105 @@ export function useDeleteItem() {
         : api(`${base}/${id}`, { method: 'DELETE' })
     },
     onSuccess: () => refreshAgenda(qc),
+    onError,
+  })
+}
+
+/* ─────────── Tareas en listas (vista Día y modal): edición en línea, orden, pasar a mañana ─────────── */
+
+/** Aplica un cambio a todas las copias de la agenda en caché (semana, mes y día) */
+function patchCachedDays(qc: QueryClient, fn: (day: AgendaDay) => AgendaDay) {
+  qc.setQueriesData<AgendaRange>({ queryKey: ['agenda'] }, (r) => r && { ...r, days: r.days.map(fn) })
+  qc.setQueriesData<AgendaDay>({ queryKey: ['day'] }, (d) => d && fn(d))
+}
+
+async function snapshotAgenda(qc: QueryClient) {
+  await Promise.all([qc.cancelQueries({ queryKey: ['agenda'] }), qc.cancelQueries({ queryKey: ['day'] })])
+  return [...qc.getQueriesData({ queryKey: ['agenda'] }), ...qc.getQueriesData({ queryKey: ['day'] })]
+}
+
+type Snapshot = Awaited<ReturnType<typeof snapshotAgenda>>
+const restore = (qc: QueryClient, snap?: Snapshot) => snap?.forEach(([key, data]) => qc.setQueryData(key, data))
+
+/** Editar título, descripción, categoría o día de una tarea (optimista) */
+export function usePatchTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string
+      patch: Partial<Pick<Task, 'title' | 'description' | 'calendarId' | 'startDate'>>
+    }) => api<Task>(`/tasks/${id}`, { method: 'PATCH', body: patch }),
+    onMutate: async ({ id, patch }) => {
+      const snap = await snapshotAgenda(qc)
+      if (patch.startDate) {
+        // Pasa a otro día: sale de la lista de este
+        patchCachedDays(qc, (d) => ({ ...d, tasks: d.tasks.filter((t) => t.sourceId !== id) }))
+      } else {
+        patchCachedDays(qc, (d) => ({
+          ...d,
+          tasks: d.tasks.map((t) =>
+            t.sourceId === id
+              ? {
+                  ...t,
+                  ...(patch.title !== undefined && { title: patch.title }),
+                  ...(patch.description !== undefined && { description: patch.description }),
+                  ...(patch.calendarId !== undefined && { calendarId: patch.calendarId }),
+                }
+              : t,
+          ),
+        }))
+      }
+      return { snap }
+    },
+    onError: (e, _v, ctx) => {
+      restore(qc, ctx?.snap)
+      onError(e)
+    },
+    onSettled: () => refreshAgenda(qc),
+  })
+}
+
+/** Nuevo orden de tareas (optimista): `ids` en el orden visible */
+export function useReorderTasks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api('/tasks/order', { method: 'PUT', body: { ids } }),
+    onMutate: async (ids) => {
+      const snap = await snapshotAgenda(qc)
+      const pos = new Map(ids.map((id, i) => [id, i]))
+      patchCachedDays(qc, (d) => ({
+        ...d,
+        tasks: d.tasks
+          .map((t) => (pos.has(t.sourceId) ? { ...t, position: pos.get(t.sourceId)! } : t))
+          .sort((a, b) => a.position - b.position),
+      }))
+      return { snap }
+    },
+    onError: (e, _v, ctx) => {
+      restore(qc, ctx?.snap)
+      onError(e)
+    },
+    onSettled: () => refreshAgenda(qc),
+  })
+}
+
+/** Pasa las tareas normales no hechas de un día a otro */
+export function useCarryOverTasks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { from: string; to: string; calendarIds?: string[] }) =>
+      api<{ moved: number }>('/tasks/carry-over', { method: 'POST', body: v }),
+    onSuccess: ({ moved }) => {
+      toast.success(
+        moved
+          ? `${moved} ${moved === 1 ? 'tarea pasada' : 'tareas pasadas'} al día siguiente`
+          : 'No hay tareas pendientes para pasar',
+      )
+      return refreshAgenda(qc)
+    },
     onError,
   })
 }

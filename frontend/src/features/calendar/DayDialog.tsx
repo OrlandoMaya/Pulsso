@@ -1,30 +1,20 @@
-import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarDays, Columns2, ListChecks, MoreHorizontal, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react'
+import { CalendarDays, Columns2, ListChecks, Plus, Repeat, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { capitalize, fromKey, hhmm } from '@/lib/dates'
 import { pairRows } from '@/lib/overlap'
-import { ONE_OFF_RRULE } from '@/lib/recurrence'
 import type { AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { QuickAddTask } from '../tasks/QuickAddTask'
+import { TaskList } from '../tasks/TaskList'
 import { useCalendarActions } from './editor-context'
-import { ItemCheckbox } from './ItemCheckbox'
+import { useDay } from './queries'
 import { SpecialChip } from './SpecialChip'
-import { useCalendars, useDay, useDeleteItem, useSaveTask } from './queries'
 
 interface Props {
   date: string | null
@@ -118,20 +108,16 @@ function DayContent({
             <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Tareas</h3>
             {todo.length > 0 && <span className="text-xs text-muted-foreground">Marca para tachar</span>}
           </div>
+          <QuickAddTask date={date} />
           {day.isPending ? (
             <Skeleton className="h-[104px] rounded-[10px]" />
           ) : todo.length ? (
-            <ul className="divide-y overflow-hidden rounded-[10px] border">
-              {todo.map((item) => (
-                <TodoRow key={item.sourceType + item.sourceId} item={item} date={date} />
-              ))}
-            </ul>
+            <TaskList tasks={todo} date={date} compact />
           ) : (
             <p className="rounded-[10px] border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
               Nada por hacer este día.
             </p>
           )}
-          <QuickAdd date={date} />
         </section>
 
         <section className="flex flex-col gap-2">
@@ -204,104 +190,5 @@ function DayContent({
         </Button>
       </footer>
     </>
-  )
-}
-
-function TodoRow({ item, date }: { item: AgendaTask; date: string }) {
-  const { openEditor } = useCalendarActions()
-  const calendars = useCalendars()
-  const remove = useDeleteItem()
-  const cal = calendars.data?.find((c) => c.id === item.calendarId)
-  const c = COLORS[item.color]
-
-  return (
-    <li className={cn('flex min-h-12 items-center gap-3 px-3.5 py-2', item.done && 'bg-muted/40')}>
-      <ItemCheckbox item={item} date={date} className="size-[18px]" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={cn('truncate text-sm font-medium', item.done && 'text-muted-foreground line-through')}>
-          {item.title}
-        </span>
-      </div>
-      {cal && <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', c.soft, c.text)}>{cal.name}</span>}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`Opciones de ${item.title}`}>
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => openEditor({ mode: 'edit', kind: item.sourceType, id: item.sourceId, date })}
-          >
-            <Pencil />
-            Editar
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => remove.mutate({ kind: item.sourceType, id: item.sourceId, date })}>
-            <X />
-            Quitar solo este día
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => remove.mutate({ kind: item.sourceType, id: item.sourceId })}
-          >
-            <Trash2 />
-            Eliminar (todos los días)
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </li>
-  )
-}
-
-/** Agrega una tarea solo para este día */
-function QuickAdd({ date }: { date: string }) {
-  const calendars = useCalendars()
-  const save = useSaveTask()
-  const [title, setTitle] = useState('')
-  const [calendarId, setCalendarId] = useState<string>()
-  const selected = calendarId ?? calendars.data?.find((c) => c.visible)?.id ?? calendars.data?.[0]?.id
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim() || !selected) return
-    save.mutate(
-      { data: { title: title.trim(), calendarId: selected, startDate: date, rrule: ONE_OFF_RRULE } },
-      { onSuccess: () => setTitle('') },
-    )
-  }
-
-  return (
-    <form onSubmit={submit} className="mt-1 flex flex-wrap gap-2 sm:flex-nowrap">
-      <label htmlFor="quick-task" className="sr-only">
-        Nueva tarea para este día
-      </label>
-      <Input
-        id="quick-task"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Agregar tarea para este día…"
-        maxLength={120}
-        className="h-10 w-full sm:w-auto sm:flex-1"
-      />
-      {/* Se vuelve a montar al llegar las categorías para que muestre el valor */}
-      <Select key={calendars.data ? 'ready' : 'loading'} value={selected} onValueChange={setCalendarId}>
-        <SelectTrigger className="h-10! flex-1 sm:w-[130px] sm:flex-none" aria-label="Categoría">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {calendars.data?.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              <span className={cn('size-2 rounded-full', COLORS[c.color].dot)} />
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button type="submit" variant="outline" className="h-10" disabled={!title.trim() || save.isPending}>
-        <Plus />
-        Agregar
-      </Button>
-    </form>
   )
 }

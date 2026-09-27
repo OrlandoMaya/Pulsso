@@ -67,6 +67,7 @@ describe('tareas', () => {
   it('normal = solo ese día', () => {
     expect(toTaskPayload({ ...t, recurrence: 'normal' })).toEqual({
       title: 'Pagar luz',
+      description: '',
       calendarId: 'c1',
       startDate: '2026-09-24',
       rrule: 'FREQ=DAILY;COUNT=1',

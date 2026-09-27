@@ -31,6 +31,7 @@ export interface EventFormValues extends RepeatValues {
 
 export interface TaskFormValues extends RepeatValues {
   title: string
+  description?: string
   calendarId: string
   date: string
 }
@@ -56,12 +57,13 @@ export function toEventPayload(v: EventFormValues): EventPayload {
   }
 }
 
-export type TaskPayload = Omit<Task, 'id' | 'exdates'>
+export type TaskPayload = Omit<Task, 'id' | 'exdates' | 'position'>
 
 /** Tarea normal = solo ese día; recurrente = con regla */
 export function toTaskPayload(v: TaskFormValues): TaskPayload {
   return {
     title: v.title.trim(),
+    description: v.description?.trim() ?? '',
     calendarId: v.calendarId,
     startDate: v.date,
     rrule: ruleOf(v, v.date) ?? ONE_OFF_RRULE,
