@@ -1,10 +1,9 @@
 import { createContext, useContext } from 'react'
-import type { EventType } from '@/lib/event-types'
+import type { Kind, Recurrence } from '@/lib/event-types'
 
 export type EditorTarget =
-  | { mode: 'create'; kind: 'event'; type: EventType; date: string; time?: string }
-  | { mode: 'create'; kind: 'task'; date: string }
-  | { mode: 'edit'; kind: 'event' | 'task'; id: string; date: string }
+  | { mode: 'create'; kind: Kind; recurrence: Recurrence; date: string; time?: string; allDay?: boolean }
+  | { mode: 'edit'; kind: Kind; id: string; date: string }
 
 export interface CalendarActions {
   openEditor: (target: EditorTarget) => void

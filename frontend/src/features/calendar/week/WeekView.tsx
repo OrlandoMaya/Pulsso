@@ -56,7 +56,7 @@ export function WeekView({
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
     const minutes = Math.floor((y / HOUR) * 2) * 30
     const time = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${minutes % 60 ? '30' : '00'}`
-    openEditor({ mode: 'create', kind: 'event', type: 'normal', date: toKey(date), time })
+    openEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date: toKey(date), time })
   }
 
   return (
@@ -101,12 +101,14 @@ export function WeekView({
             </div>
           </div>
 
-          {/* Eventos especiales de día completo */}
+          {/* Eventos de todo el día */}
           {hasSpecial && (
             <div className="flex border-b">
               <div className="sticky left-0 z-10 flex w-16 shrink-0 flex-col items-end gap-1 bg-background pt-2 pr-2 text-muted-foreground">
                 <Sparkles className="size-3.5" />
-                <span className="text-[10px] font-medium tracking-wide uppercase">Especial</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase leading-tight text-right">
+                  Todo el día
+                </span>
               </div>
               <div className="grid flex-1 grid-cols-7">
                 {dates.map((d) => {

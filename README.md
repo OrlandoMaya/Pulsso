@@ -110,12 +110,15 @@ pnpm format                                 # prettier
   login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
 - **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
   desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
-- **Eventos y tareas son distintos**:
-  - **Eventos** (no se tachan): **Normal** (un día con hora de inicio y fin), **Recurrente** (con hora; se repite
-    todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin opcional) y **Especial** (día
-    completo sin horas, como un cumpleaños, opcionalmente cada año; se muestra en la fila "Especial").
-  - **Tareas** (se tachan): algo por hacer, solo un día o repetido. Aparecen en la franja **Tareas** de la semana,
-    en cada día del mes y en la sección "Tareas" del modal del día. El avance (hechas/total) cuenta solo tareas.
+- **Cuatro cosas** (botón "Nuevo" y editor con dos selectores: *Evento / Tarea* y *Normal / Recurrente*):
+  - **Evento normal**: un día, con hora de inicio y fin o **todo el día** (feriado).
+  - **Evento recurrente**: se repite (todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin
+    opcional), con horario o **todo el día** (cumpleaños = recurrente cada año, todo el día).
+  - **Tarea normal**: algo por hacer un solo día; se tacha.
+  - **Tarea recurrente**: se repite y se tacha cada vez.
+
+  Los eventos no se tachan; las tareas sí. Los eventos de todo el día van en la fila "Todo el día" de la semana y
+  arriba de cada día en el mes. Las tareas van en la franja "Tareas". El avance (hechas/total) cuenta solo tareas.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
   avisa cuántos eventos y tareas se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.

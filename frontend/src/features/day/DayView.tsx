@@ -223,7 +223,7 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => openEditor({ mode: 'create', kind: 'event', type: 'normal', date })}
+            onClick={() => openEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date })}
           >
             Nuevo evento
           </Button>

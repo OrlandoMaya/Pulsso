@@ -198,7 +198,7 @@ function DayContent({
         <Button variant="outline" onClick={onClose}>
           Cerrar
         </Button>
-        <Button onClick={() => openEditor({ mode: 'create', kind: 'event', type: 'normal', date })}>
+        <Button onClick={() => openEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date })}>
           <Plus />
           Nuevo evento
         </Button>

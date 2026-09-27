@@ -4,15 +4,7 @@ import { cn } from '@/lib/utils'
 import { useToggleCompletion } from './queries'
 
 /** Casilla para tachar una tarea en un día concreto (los eventos no se tachan) */
-export function ItemCheckbox({
-  item,
-  date,
-  className,
-}: {
-  item: AgendaTask
-  date: string
-  className?: string
-}) {
+export function ItemCheckbox({ item, date, className }: { item: AgendaTask; date: string; className?: string }) {
   const toggle = useToggleCompletion()
   return (
     <Checkbox

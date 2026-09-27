@@ -3,93 +3,84 @@ import type { CalendarEvent, Task } from './types'
 import { fromKey } from './dates'
 
 /**
- * Eventos: cosas que ocurren en el calendario (no se tachan).
- * - normal: un día, con hora de inicio y de fin
- * - recurring: con hora, se repite (diario, lun–vie, ciertos días…)
- * - special: día completo sin horas (cumpleaños, feriado); puede repetirse cada año
+ * Cuatro cosas:
+ * - Evento normal / Evento recurrente: ocurren en el calendario (no se tachan).
+ *   Pueden ser con horario o de todo el día (cumpleaños, feriado).
+ * - Tarea normal / Tarea recurrente: cosas por hacer que se tachan.
  */
-export type EventType = 'normal' | 'recurring' | 'special'
+export type Kind = 'event' | 'task'
+export type Recurrence = 'normal' | 'recurring'
+export type RepeatRule = Exclude<RepeatKind, 'none'>
 
-export interface EventFormValues {
-  type: EventType
+interface RepeatValues {
+  recurrence: Recurrence
+  repeat: RepeatRule
+  days: string[]
+  until?: string
+}
+
+export interface EventFormValues extends RepeatValues {
   title: string
   calendarId: string
   date: string
+  allDay: boolean
   startTime: string
   endTime: string
-  repeat: RepeatKind
-  days: string[]
-  until?: string
-  /** Solo especial: se repite cada año en la misma fecha */
-  yearly: boolean
   notes?: string
 }
 
-/** Qué tipo es un evento que ya existe */
-export function typeOf(event: CalendarEvent): EventType {
-  if (event.allDay) return 'special'
-  if (event.rrule) return 'recurring'
-  return 'normal'
+export interface TaskFormValues extends RepeatValues {
+  title: string
+  calendarId: string
+  date: string
 }
+
+const ruleOf = (v: RepeatValues, date: string) =>
+  v.recurrence === 'recurring'
+    ? buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, fromKey(date))
+    : null
 
 export type EventPayload = Omit<CalendarEvent, 'id' | 'exdates'>
 
 /** Convierte el formulario de evento en lo que espera la API */
 export function toEventPayload(v: EventFormValues): EventPayload {
-  const start = fromKey(v.date)
-  const base = {
+  return {
     title: v.title.trim(),
     calendarId: v.calendarId,
     notes: v.notes?.trim() || undefined,
     checkable: false,
+    allDay: v.allDay,
+    start: v.allDay ? `${v.date}T00:00` : `${v.date}T${v.startTime}`,
+    end: v.allDay ? `${v.date}T00:00` : `${v.date}T${v.endTime}`,
+    rrule: ruleOf(v, v.date),
   }
-
-  if (v.type === 'special') {
-    return {
-      ...base,
-      start: `${v.date}T00:00`,
-      end: `${v.date}T00:00`,
-      allDay: true,
-      rrule: v.yearly ? buildRRule({ kind: 'yearly', days: [] }, start) : null,
-    }
-  }
-  return {
-    ...base,
-    start: `${v.date}T${v.startTime}`,
-    end: `${v.date}T${v.endTime}`,
-    allDay: false,
-    rrule:
-      v.type === 'recurring'
-        ? buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, start)
-        : null,
-  }
-}
-
-/** Tareas: cosas por hacer que se tachan. Solo un día o repetidas. */
-export type TaskRepeat = 'once' | Exclude<RepeatKind, 'none'>
-
-export interface TaskFormValues {
-  title: string
-  calendarId: string
-  date: string
-  repeat: TaskRepeat
-  days: string[]
-  until?: string
 }
 
 export type TaskPayload = Omit<Task, 'id' | 'exdates'>
 
+/** Tarea normal = solo ese día; recurrente = con regla */
 export function toTaskPayload(v: TaskFormValues): TaskPayload {
-  const rrule =
-    v.repeat === 'once'
-      ? ONE_OFF_RRULE
-      : buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, fromKey(v.date))
-  return { title: v.title.trim(), calendarId: v.calendarId, startDate: v.date, rrule: rrule ?? ONE_OFF_RRULE }
+  return {
+    title: v.title.trim(),
+    calendarId: v.calendarId,
+    startDate: v.date,
+    rrule: ruleOf(v, v.date) ?? ONE_OFF_RRULE,
+  }
 }
 
-/** Lee la repetición de una tarea existente */
-export function taskRepeatOf(task: Task): { repeat: TaskRepeat; days: string[]; until?: string } {
-  if (/COUNT=1(;|$)/.test(task.rrule)) return { repeat: 'once', days: [] }
-  const r = parseRRule(task.rrule, fromKey(task.startDate))
-  return { repeat: r.kind === 'none' ? 'daily' : r.kind, days: r.days, until: r.until }
+/** Repetición de algo que ya existe, lista para el formulario */
+export function repeatValuesOf(rrule: string | null, startDate: string): RepeatValues {
+  const start = fromKey(startDate)
+  if (!rrule || /COUNT=1(;|$)/.test(rrule)) {
+    return { recurrence: 'normal', repeat: 'daily', days: [parseRRule(null, start).days[0]], until: '' }
+  }
+  const r = parseRRule(rrule, start)
+  return {
+    recurrence: 'recurring',
+    repeat: r.kind === 'none' ? 'daily' : r.kind,
+    days: r.days,
+    until: r.until ?? '',
+  }
 }
+
+export const isRecurringTask = (task: Task) => repeatValuesOf(task.rrule, task.startDate).recurrence === 'recurring'
