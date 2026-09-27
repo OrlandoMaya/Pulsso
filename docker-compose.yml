@@ -1,0 +1,29 @@
+# Uso:
+#   cp backend/.env.example backend/.env   # MONGODB_URI de Atlas + JWT_SECRET
+#   docker compose up --build
+#   → http://localhost:8080
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: backend/.env
+    environment:
+      PORT: "3000"
+      # Detrás de nginx: la IP real del cliente viene en X-Forwarded-For (límite de intentos de login)
+      TRUST_PROXY: "1"
+      CORS_ORIGIN: http://localhost:8080
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      API_UPSTREAM: http://backend:3000
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

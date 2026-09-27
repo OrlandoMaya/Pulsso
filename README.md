@@ -1,1 +1,185 @@
 # Pulsso
+
+Calendario semanal y mensual con eventos, tareas recurrentes que se pueden tachar y cuentas por usuario.
+
+Monorepo con **pnpm workspaces**:
+
+```
+backend/    # API: NestJS + MongoDB Atlas (Mongoose) + JWT
+frontend/   # App: React 19 + Vite + Tailwind v4 + shadcn/ui
+```
+
+## Requisitos
+
+- Node 20+
+- pnpm 10 (`corepack enable`)
+- Un cluster de MongoDB Atlas (el gratuito M0 sirve)
+
+## Configurar MongoDB Atlas
+
+1. En Atlas crea un cluster y, en **Database Access**, un usuario con permiso *readWrite*.
+2. En **Network Access** agrega tu IP (o la del servidor donde corra la API).
+3. En **Database → Connect → Drivers** copia la cadena `mongodb+srv://…`
+   y agrégale el nombre de la base, p. ej. `…mongodb.net/pulsso?retryWrites=true&w=majority`.
+
+## Correr el proyecto
+
+```bash
+pnpm install
+cp backend/.env.example backend/.env   # pega tu MONGODB_URI y un JWT_SECRET largo
+pnpm dev:api                           # API en http://localhost:3000/api
+pnpm dev:web                           # App en http://localhost:5173 (reenvía /api al backend)
+```
+
+Abre http://localhost:5173, crea tu cuenta y listo.
+
+### Variables del backend (`backend/.env`)
+
+| Variable | Descripción |
+|---|---|
+| `MONGODB_URI` | Cadena de conexión de Atlas |
+| `JWT_SECRET` | Secreto para firmar sesiones (mín. 32 caracteres; `openssl rand -base64 48`) |
+| `JWT_EXPIRES_IN` | Duración de la sesión (por defecto `7d`) |
+| `PORT` | Puerto (por defecto `3000`) |
+| `CORS_ORIGIN` | Origen(es) del frontend separados por coma (por defecto `http://localhost:5173`) |
+| `TRUST_PROXY` | Número de proxies delante de la API (`1` detrás de nginx). Déjalo vacío si la API está expuesta directo |
+
+### Variables del frontend (`frontend/.env`, opcional)
+
+| Variable | Descripción |
+|---|---|
+| `VITE_API_URL` | URL del backend en producción, p. ej. `https://api.midominio.com`. En desarrollo déjala vacía. |
+
+## Docker
+
+Cada proyecto tiene su `Dockerfile` y hay un `docker-compose.yml` en la raíz. Las imágenes se construyen
+desde la raíz del repo porque el lockfile de pnpm es compartido.
+
+```bash
+cp backend/.env.example backend/.env   # MONGODB_URI de Atlas + JWT_SECRET
+docker compose up --build              # → http://localhost:8080
+```
+
+- **backend** (`backend/Dockerfile`): Node 22 Alpine en varias etapas (compila con dependencias de desarrollo
+  y la imagen final lleva solo las de producción). Corre como usuario `node`, con *healthcheck* en
+  `/api/health`. Las credenciales llegan por variables de entorno (`env_file`), nunca dentro de la imagen.
+  No se publica al exterior: solo nginx lo alcanza por la red interna de compose.
+- **frontend** (`frontend/Dockerfile`): compila con Vite y sirve con nginx. `nginx.conf.template` atiende las
+  rutas de React, cachea `/assets` y reenvía `/api` al backend (`API_UPSTREAM`, por defecto
+  `http://backend:3000`), así que no hace falta CORS.
+- `TRUST_PROXY=1` (ya puesto en compose) hace que la API use la IP real del cliente para el límite de intentos
+  de login en lugar de la de nginx.
+- Para que la app llame a una API en otro dominio: `docker build -f frontend/Dockerfile --build-arg
+  VITE_API_URL=https://api.midominio.com .`
+- En Atlas, agrega en **Network Access** la IP pública del servidor donde corra el contenedor.
+
+Construir por separado:
+
+```bash
+docker build -f backend/Dockerfile -t pulsso-backend .
+docker build -f frontend/Dockerfile -t pulsso-frontend .
+```
+
+## Pruebas y calidad
+
+```bash
+pnpm test                                   # backend (recurrencia) + frontend (columnas, fechas, reglas)
+pnpm --filter @pulsso/backend test:e2e      # e2e del API: Mongo en memoria, o MONGODB_TEST_URI si la defines
+pnpm lint                                   # tipos (y oxlint en el frontend)
+pnpm format                                 # prettier
+```
+
+> `MONGODB_TEST_URI` debe apuntar a una base **solo para pruebas**: la suite la borra al empezar.
+
+## Frontend
+
+- **Login / Crear cuenta** (`/login`): la sesión se guarda en el navegador; si el token vence, vuelve al login.
+- **Día** (`/dia/:fecha?lista=trabajo|personal`): lista de tareas del día con **descripción**, separada en
+  **Personal** y **Trabajo** (se recuerda la última usada). Ideal para los objetivos diarios: se tachan, se
+  editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮ (mouse, táctil o
+  teclado: Espacio + flechas), se mueven a mañana o a la otra lista, y "Pasar
+  pendientes a mañana" lleva las no hechas al día siguiente. Al lado, la agenda del día (eventos y recurrentes).
+- **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Diario** con las tareas recurrentes tachables,
+  eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
+  un evento a esa hora; clic en el día abre su modal.
+- **Mes** (`/mes/:fecha`): cada día muestra sus tareas tachables, su avance (hechas/total), hasta dos filas
+  de eventos (los simultáneos comparten fila) y "+N más". En móvil se resume con puntos.
+- **Modal del día** (`?dia=YYYY-MM-DD`): lista "Por hacer" con casillas, agregar una tarea solo para ese
+  día, agenda con los eventos "Al mismo tiempo" y opciones para editar, quitar solo ese día o eliminar.
+- **Modo oscuro**: Claro / Oscuro / Sistema desde el botón de la luna o el menú de cuenta (también en el
+  login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
+- **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
+  desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
+- **Editor**: evento o tarea recurrente, con repetición (diaria, entre semana, días elegidos, mensual,
+  anual), fecha de fin opcional y la opción "Se puede tachar".
+
+Estructura:
+
+```
+frontend/src/
+├── components/ui/        # componentes shadcn (button, dialog, select, checkbox…)
+├── features/auth/        # AuthProvider, LoginPage, RequireAuth
+├── features/calendar/    # CalendarPage, Sidebar, Toolbar, DayDialog, EditorDialog, week/, month/
+└── lib/                  # api, fechas, colores, overlap (columnas), recurrence (RRULE)
+```
+
+`components.json` está listo para agregar más componentes con `pnpm dlx shadcn@latest add <componente>`
+dentro de `frontend/`.
+
+## Cómo funciona
+
+- **Cuentas privadas**: todas las rutas (salvo `auth/register`, `auth/login` y `health`) exigen
+  `Authorization: Bearer <token>`, y cada consulta se filtra por el usuario del token. Un recurso de
+  otra persona responde `404`. Al registrarse se crean 5 calendarios: Trabajo, Equipo, Clientes,
+  Personal y Otros.
+- **Horas "flotantes"**: fechas con hora como `2026-09-21T09:00` (hora local, sin zona). Así la
+  repetición no se mueve con los cambios de horario.
+- **Repetición**: reglas [RRULE](https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html)
+  sin `DTSTART`, p. ej. `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=MONTHLY;BYMONTHDAY=1`.
+  Se permiten `DAILY`, `WEEKLY`, `MONTHLY` y `YEARLY`.
+- **Tachar**: se guarda por ocurrencia (evento/tarea + día). Tachar "Meditar" el lunes no lo tacha
+  el martes.
+- **Eventos a la misma hora**: la API los devuelve ordenados por hora; el frontend los reparte en
+  columnas (`frontend/src/lib/overlap.ts`).
+
+## Endpoints (`/api`)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/auth/register` | `{ name, email, password }` → `{ accessToken, user }` |
+| `POST` | `/auth/login` | `{ email, password }` → `{ accessToken, user }` |
+| `GET` | `/auth/me` | Usuario de la sesión |
+| `GET` `POST` | `/calendars` | Listar / crear `{ name, color, visible? }` |
+| `PATCH` `DELETE` | `/calendars/:id` | Editar / borrar (borra también sus eventos y tareas) |
+| `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable? }` |
+| `GET` `PATCH` `DELETE` | `/events/:id` | Ver / editar (`rrule: null` quita la repetición) / borrar |
+| `POST` | `/events/:id/exdates` | `{ date }` borra solo esa ocurrencia |
+| `GET` `POST` | `/tasks` | Tareas recurrentes sin hora `{ calendarId, title, startDate, rrule }` |
+| `PATCH` `DELETE` | `/tasks/:id` | Editar / borrar |
+| `POST` | `/tasks/:id/exdates` | `{ date }` quita la tarea solo ese día |
+| `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha |
+| `GET` | `/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD[&calendarIds=a,b]` | Días del rango (vista semana/mes, máx. 62 días) |
+| `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
+| `GET` | `/day-items?date=YYYY-MM-DD&list=personal\|work` | Lista de tareas del día (vista **Día**), en orden |
+| `POST` | `/day-items` | `{ date, list, title, description? }` agrega al final |
+| `PATCH` `DELETE` | `/day-items/:id` | Editar `{ title?, description?, done?, date?, list? }` (cambiar `date`/`list` la mueve) / borrar |
+| `PUT` | `/day-items/order` | `{ date, list, ids }` nuevo orden |
+| `POST` | `/day-items/carry-over` | `{ from, to, list }` pasa las pendientes a otro día |
+
+Cada día de la agenda tiene esta forma:
+
+```json
+{
+  "date": "2026-09-26",
+  "progress": { "done": 1, "total": 3 },
+  "tasks": [
+    { "sourceType": "task", "sourceId": "…", "calendarId": "…", "color": "emerald", "title": "Meditar 10 min", "done": true }
+  ],
+  "events": [
+    { "sourceType": "event", "sourceId": "…", "calendarId": "…", "color": "amber", "title": "Taller de React",
+      "start": "2026-09-26T10:00", "end": "2026-09-26T12:00", "recurring": false, "checkable": false, "done": false }
+  ]
+}
+```
+
+Si no mandas `calendarIds`, la agenda incluye solo los calendarios con `visible: true`.
