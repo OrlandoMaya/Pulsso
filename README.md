@@ -42,12 +42,43 @@ Abre http://localhost:5173, crea tu cuenta y listo.
 | `JWT_EXPIRES_IN` | Duración de la sesión (por defecto `7d`) |
 | `PORT` | Puerto (por defecto `3000`) |
 | `CORS_ORIGIN` | Origen(es) del frontend separados por coma (por defecto `http://localhost:5173`) |
+| `TRUST_PROXY` | Número de proxies delante de la API (`1` detrás de nginx). Déjalo vacío si la API está expuesta directo |
 
 ### Variables del frontend (`frontend/.env`, opcional)
 
 | Variable | Descripción |
 |---|---|
 | `VITE_API_URL` | URL del backend en producción, p. ej. `https://api.midominio.com`. En desarrollo déjala vacía. |
+
+## Docker
+
+Cada proyecto tiene su `Dockerfile` y hay un `docker-compose.yml` en la raíz. Las imágenes se construyen
+desde la raíz del repo porque el lockfile de pnpm es compartido.
+
+```bash
+cp backend/.env.example backend/.env   # MONGODB_URI de Atlas + JWT_SECRET
+docker compose up --build              # → http://localhost:8080
+```
+
+- **backend** (`backend/Dockerfile`): Node 22 Alpine en varias etapas (compila con dependencias de desarrollo
+  y la imagen final lleva solo las de producción). Corre como usuario `node`, con *healthcheck* en
+  `/api/health`. Las credenciales llegan por variables de entorno (`env_file`), nunca dentro de la imagen.
+  No se publica al exterior: solo nginx lo alcanza por la red interna de compose.
+- **frontend** (`frontend/Dockerfile`): compila con Vite y sirve con nginx. `nginx.conf.template` atiende las
+  rutas de React, cachea `/assets` y reenvía `/api` al backend (`API_UPSTREAM`, por defecto
+  `http://backend:3000`), así que no hace falta CORS.
+- `TRUST_PROXY=1` (ya puesto en compose) hace que la API use la IP real del cliente para el límite de intentos
+  de login en lugar de la de nginx.
+- Para que la app llame a una API en otro dominio: `docker build -f frontend/Dockerfile --build-arg
+  VITE_API_URL=https://api.midominio.com .`
+- En Atlas, agrega en **Network Access** la IP pública del servidor donde corra el contenedor.
+
+Construir por separado:
+
+```bash
+docker build -f backend/Dockerfile -t pulsso-backend .
+docker build -f frontend/Dockerfile -t pulsso-frontend .
+```
 
 ## Pruebas y calidad
 

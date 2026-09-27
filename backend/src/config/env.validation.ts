@@ -22,6 +22,13 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   CORS_ORIGIN?: string;
+
+  /** Número de proxies de confianza delante de la API (1 con nginx) */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  TRUST_PROXY?: number;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
