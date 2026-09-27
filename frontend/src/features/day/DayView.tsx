@@ -25,6 +25,7 @@ import type { AgendaDay, DayItem, DayList } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
 import { ItemCheckbox } from '../calendar/ItemCheckbox'
+import { SpecialChip } from '../calendar/SpecialChip'
 import { AddDayItem } from './AddDayItem'
 import { DayItemCard } from './DayItemCard'
 import { useCarryOver, useDayItems, useReorderDayItems } from './queries'
@@ -208,7 +209,7 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Agenda</h2>
-          <Button variant="ghost" size="sm" onClick={() => openEditor({ mode: 'create', kind: 'event', date })}>
+          <Button variant="ghost" size="sm" onClick={() => openEditor({ mode: 'create', type: 'normal', date })}>
             Nuevo evento
           </Button>
         </div>
@@ -236,11 +237,21 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
               </div>
             )}
 
+            {day.events.some((e) => e.allDay) && (
+              <div className="flex flex-col gap-1.5">
+                {day.events
+                  .filter((e) => e.allDay)
+                  .map((e) => (
+                    <SpecialChip key={e.sourceId} event={e} date={date} size="md" />
+                  ))}
+              </div>
+            )}
+
             {day.events.length === 0 && day.tasks.length === 0 && (
               <p className="text-sm text-muted-foreground">Nada en el calendario este día.</p>
             )}
 
-            {pairRows(day.events).map((row) => (
+            {pairRows(day.events.filter((e) => !e.allDay)).map((row) => (
               <div key={row[0].sourceId + row[0].start} className="flex flex-col gap-1">
                 {row.length === 2 && (
                   <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">

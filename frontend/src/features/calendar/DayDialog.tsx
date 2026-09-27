@@ -23,6 +23,7 @@ import type { AgendaEvent, AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 import { ItemCheckbox } from './ItemCheckbox'
+import { SpecialChip } from './SpecialChip'
 import { useCalendars, useDay, useDeleteItem, useSaveTask } from './queries'
 
 interface Props {
@@ -101,6 +102,16 @@ function DayContent({
       </header>
 
       <div className="flex flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4 sm:px-6 sm:pt-[18px]">
+        {data && data.events.some((e) => e.allDay) && (
+          <div className="flex flex-wrap gap-2">
+            {data.events
+              .filter((e) => e.allDay)
+              .map((e) => (
+                <SpecialChip key={e.sourceId} event={e} date={date} size="md" />
+              ))}
+          </div>
+        )}
+
         <section className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Por hacer</h3>
@@ -124,9 +135,11 @@ function DayContent({
 
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Agenda</h3>
-          {data && data.events.length === 0 && <p className="text-sm text-muted-foreground">Sin eventos con hora.</p>}
+          {data && !data.events.some((e) => !e.allDay) && (
+            <p className="text-sm text-muted-foreground">Sin eventos con hora.</p>
+          )}
           {data &&
-            pairRows(data.events).map((row) => (
+            pairRows(data.events.filter((e) => !e.allDay)).map((row) => (
               <div key={row[0].sourceId + row[0].start} className="flex gap-3">
                 <span className="w-11 shrink-0 pt-2.5 text-right font-mono text-xs text-muted-foreground">
                   {hhmm(row[0].start)}
@@ -184,7 +197,7 @@ function DayContent({
         <Button variant="outline" onClick={onClose}>
           Cerrar
         </Button>
-        <Button onClick={() => openEditor({ mode: 'create', kind: 'event', date })}>
+        <Button onClick={() => openEditor({ mode: 'create', type: 'normal', date })}>
           <Plus />
           Nuevo evento
         </Button>
@@ -279,9 +292,9 @@ function QuickAdd({ date }: { date: string }) {
         maxLength={120}
         className="h-10 w-full sm:w-auto sm:flex-1"
       />
-      {/* Se vuelve a montar al llegar los calendarios para que muestre el valor */}
+      {/* Se vuelve a montar al llegar las categorías para que muestre el valor */}
       <Select key={calendars.data ? 'ready' : 'loading'} value={selected} onValueChange={setCalendarId}>
-        <SelectTrigger className="h-10! flex-1 sm:w-[130px] sm:flex-none" aria-label="Calendario">
+        <SelectTrigger className="h-10! flex-1 sm:w-[130px] sm:flex-none" aria-label="Categoría">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

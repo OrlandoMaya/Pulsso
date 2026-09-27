@@ -8,6 +8,7 @@ import type { AgendaDay, AgendaEvent } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../editor-context'
 import { ItemCheckbox } from '../ItemCheckbox'
+import { SpecialChip } from '../SpecialChip'
 
 const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const MAX_TASKS = 3
@@ -72,7 +73,8 @@ function DayCell({
   const key = toKey(date)
   const today = isToday(date)
   const tasks = day?.tasks ?? []
-  const rows = pairRows(day?.events ?? [])
+  const specials = (day?.events ?? []).filter((e) => e.allDay)
+  const rows = pairRows((day?.events ?? []).filter((e) => !e.allDay))
   const shownRows = rows.slice(0, MAX_ROWS)
   const hidden = Math.max(0, tasks.length - MAX_TASKS) + rows.slice(MAX_ROWS).reduce((n, r) => n + r.length, 0)
   const { done = 0, total = 0 } = day?.progress ?? {}
@@ -116,8 +118,12 @@ function DayCell({
         )}
       </div>
 
+      {specials.map((e) => (
+        <SpecialChip key={e.sourceId} event={e} date={key} className="max-sm:hidden" />
+      ))}
+
       {/* En móvil: solo puntos; al tocar se abre el día */}
-      {(tasks.length > 0 || rows.length > 0) && (
+      {(tasks.length > 0 || (day?.events.length ?? 0) > 0) && (
         <button
           type="button"
           onClick={() => openDay(key)}

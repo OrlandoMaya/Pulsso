@@ -1,4 +1,4 @@
-import { CalendarPlus, ListChecks, Plus } from 'lucide-react'
+import { Clock, Plus, Repeat, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { toKey, type View } from '@/lib/dates'
 import type { AgendaRange } from '@/lib/types'
+import type { EventType } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 import { Logo } from './Logo'
@@ -45,7 +46,7 @@ export function MobileSidebar({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[300px] gap-6 overflow-y-auto bg-sidebar px-4 py-5 lg:hidden">
         <SheetTitle className="sr-only">Menú</SheetTitle>
-        <SheetDescription className="sr-only">Mini calendario, progreso y calendarios</SheetDescription>
+        <SheetDescription className="sr-only">Mini calendario, progreso y categorías</SheetDescription>
         <SidebarContent
           {...props}
           onSelectDate={(d) => {
@@ -72,9 +73,9 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
   const pct = totals?.total ? Math.round((totals.done * 100) / totals.total) : 0
   const today = toKey(new Date())
 
-  const create = (kind: 'event' | 'task') => {
+  const create = (type: EventType) => {
     onAction?.()
-    openEditor({ mode: 'create', kind, date: today })
+    openEditor({ mode: 'create', type, date: today })
   }
 
   return (
@@ -89,13 +90,26 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px]">
-          <DropdownMenuItem onSelect={() => create('event')}>
-            <CalendarPlus />
-            Evento
+          <DropdownMenuItem onSelect={() => create('normal')}>
+            <Clock />
+            <span className="flex flex-col">
+              Evento normal
+              <span className="text-xs text-muted-foreground">Con hora de inicio y fin</span>
+            </span>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => create('task')}>
-            <ListChecks />
-            Tarea recurrente
+          <DropdownMenuItem onSelect={() => create('recurring')}>
+            <Repeat />
+            <span className="flex flex-col">
+              Evento recurrente
+              <span className="text-xs text-muted-foreground">Se repite: diario, lun–vie…</span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => create('special')}>
+            <Sparkles />
+            <span className="flex flex-col">
+              Evento especial
+              <span className="text-xs text-muted-foreground">Todo el día: cumpleaños, feriado</span>
+            </span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -116,9 +130,7 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
       </div>
 
       <div className="flex flex-col gap-1">
-        <h2 className="px-2 pb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Mis calendarios
-        </h2>
+        <h2 className="px-2 pb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Categorías</h2>
         {calendars.isPending && Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="mx-2 my-1.5 h-5" />)}
         {calendars.data?.map((c) => (
           <label
