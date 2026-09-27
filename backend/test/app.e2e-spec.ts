@@ -275,6 +275,32 @@ describe('Pulsso API (e2e)', () => {
     expect(next.body.events).toEqual([]);
   });
 
+  it('categorías: crear, editar, contar uso y borrar', async () => {
+    const token = await register('g@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const created = await as(http.post('/api/calendars'))
+      .send({ name: 'Gym', color: 'emerald' })
+      .expect(201);
+    await as(http.patch(`/api/calendars/${created.body.id}`))
+      .send({ name: 'Deporte', color: 'amber' })
+      .expect(200);
+    await as(http.post('/api/events'))
+      .send({
+        calendarId: created.body.id,
+        title: 'Correr',
+        start: '2026-09-26T08:00',
+        end: '2026-09-26T09:00',
+      })
+      .expect(201);
+    const usage = await as(http.get(`/api/calendars/${created.body.id}/usage`)).expect(200);
+    expect(usage.body).toEqual({ events: 1, tasks: 0 });
+    await as(http.delete(`/api/calendars/${created.body.id}`)).expect(204);
+
+    const all = (await as(http.get('/api/calendars'))).body as { id: string }[];
+    for (const c of all.slice(1)) await as(http.delete(`/api/calendars/${c.id}`)).expect(204);
+    await as(http.delete(`/api/calendars/${all[0].id}`)).expect(400);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

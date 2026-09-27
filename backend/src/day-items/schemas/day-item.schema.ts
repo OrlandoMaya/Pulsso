@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { toJSONOptions } from '../../common/utils/serialize';
 
 export const DAY_LISTS = ['personal', 'work'] as const;
@@ -8,7 +8,7 @@ export type DayList = (typeof DAY_LISTS)[number];
 /** Tarea/objetivo de un día concreto, con descripción. No se repite. */
 @Schema({ collection: 'day_items', timestamps: true, toJSON: toJSONOptions })
 export class DayItem {
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
   userId: Types.ObjectId;
 
   /** Día (YYYY-MM-DD) */

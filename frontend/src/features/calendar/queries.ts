@@ -45,6 +45,39 @@ export function useTask(id: string | undefined) {
   return useQuery({ queryKey: keys.task(id ?? ''), queryFn: () => api<Task>(`/tasks/${id}`), enabled: !!id })
 }
 
+export function useCalendarUsage(id: string | null) {
+  return useQuery({
+    queryKey: ['calendar-usage', id],
+    queryFn: () => api<{ events: number; tasks: number }>(`/calendars/${id}/usage`),
+    enabled: !!id,
+    staleTime: 0,
+  })
+}
+
+type CalendarInput = Pick<Calendar, 'name' | 'color'>
+
+export function useSaveCalendar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string; data: CalendarInput }) =>
+      id
+        ? api<Calendar>(`/calendars/${id}`, { method: 'PATCH', body: data })
+        : api<Calendar>('/calendars', { method: 'POST', body: data }),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: keys.calendars }), refreshAgenda(qc)]),
+    onError,
+  })
+}
+
+/** Borra la categoría y todo lo que tiene */
+export function useDeleteCalendar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api(`/calendars/${id}`, { method: 'DELETE' }),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: keys.calendars }), refreshAgenda(qc)]),
+    onError,
+  })
+}
+
 export function useToggleCalendar() {
   const qc = useQueryClient()
   return useMutation({
