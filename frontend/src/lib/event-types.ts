@@ -1,19 +1,17 @@
-import { buildRRule, ONE_OFF_RRULE, type RepeatKind, type WeekdayCode } from './recurrence'
+import { buildRRule, ONE_OFF_RRULE, parseRRule, type RepeatKind, type WeekdayCode } from './recurrence'
 import type { CalendarEvent, Task } from './types'
 import { fromKey } from './dates'
 
 /**
- * Tipos de evento que ve la persona:
+ * Eventos: cosas que ocurren en el calendario (no se tachan).
  * - normal: un día, con hora de inicio y de fin
- * - recurring: se repite; con horario (evento) o sin horario (tarea de la franja "Diario")
+ * - recurring: con hora, se repite (diario, lun–vie, ciertos días…)
  * - special: día completo sin horas (cumpleaños, feriado); puede repetirse cada año
  */
 export type EventType = 'normal' | 'recurring' | 'special'
 
 export interface EventFormValues {
   type: EventType
-  /** Solo recurrente: con horario = evento, sin horario = tarea diaria */
-  timed: boolean
   title: string
   calendarId: string
   date: string
@@ -22,70 +20,76 @@ export interface EventFormValues {
   repeat: RepeatKind
   days: string[]
   until?: string
-  checkable: boolean
   /** Solo especial: se repite cada año en la misma fecha */
   yearly: boolean
   notes?: string
 }
 
-/** Qué tipo es algo que ya existe */
-export function typeOf(event?: CalendarEvent, task?: Task): { type: EventType; timed: boolean } {
-  if (task) return { type: 'recurring', timed: false }
-  if (event?.allDay) return { type: 'special', timed: true }
-  if (event?.rrule) return { type: 'recurring', timed: true }
-  return { type: 'normal', timed: true }
+/** Qué tipo es un evento que ya existe */
+export function typeOf(event: CalendarEvent): EventType {
+  if (event.allDay) return 'special'
+  if (event.rrule) return 'recurring'
+  return 'normal'
 }
 
-export type Payload =
-  | {
-      kind: 'event'
-      data: Omit<CalendarEvent, 'id' | 'exdates'>
-    }
-  | {
-      kind: 'task'
-      data: Omit<Task, 'id' | 'exdates'>
-    }
+export type EventPayload = Omit<CalendarEvent, 'id' | 'exdates'>
 
-/** Convierte el formulario en lo que espera la API */
-export function toPayload(v: EventFormValues): Payload {
+/** Convierte el formulario de evento en lo que espera la API */
+export function toEventPayload(v: EventFormValues): EventPayload {
   const start = fromKey(v.date)
-  const base = { title: v.title.trim(), calendarId: v.calendarId }
-  const notes = v.notes?.trim() || undefined
+  const base = {
+    title: v.title.trim(),
+    calendarId: v.calendarId,
+    notes: v.notes?.trim() || undefined,
+    checkable: false,
+  }
 
   if (v.type === 'special') {
     return {
-      kind: 'event',
-      data: {
-        ...base,
-        start: `${v.date}T00:00`,
-        end: `${v.date}T00:00`,
-        allDay: true,
-        rrule: v.yearly ? buildRRule({ kind: 'yearly', days: [] }, start) : null,
-        checkable: false,
-        notes,
-      },
+      ...base,
+      start: `${v.date}T00:00`,
+      end: `${v.date}T00:00`,
+      allDay: true,
+      rrule: v.yearly ? buildRRule({ kind: 'yearly', days: [] }, start) : null,
     }
   }
-
-  const rrule =
-    v.type === 'recurring'
-      ? buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, start)
-      : null
-
-  if (v.type === 'recurring' && !v.timed) {
-    return { kind: 'task', data: { ...base, startDate: v.date, rrule: rrule ?? ONE_OFF_RRULE } }
-  }
-
   return {
-    kind: 'event',
-    data: {
-      ...base,
-      start: `${v.date}T${v.startTime}`,
-      end: `${v.date}T${v.endTime}`,
-      allDay: false,
-      rrule,
-      checkable: v.checkable,
-      notes,
-    },
+    ...base,
+    start: `${v.date}T${v.startTime}`,
+    end: `${v.date}T${v.endTime}`,
+    allDay: false,
+    rrule:
+      v.type === 'recurring'
+        ? buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, start)
+        : null,
   }
+}
+
+/** Tareas: cosas por hacer que se tachan. Solo un día o repetidas. */
+export type TaskRepeat = 'once' | Exclude<RepeatKind, 'none'>
+
+export interface TaskFormValues {
+  title: string
+  calendarId: string
+  date: string
+  repeat: TaskRepeat
+  days: string[]
+  until?: string
+}
+
+export type TaskPayload = Omit<Task, 'id' | 'exdates'>
+
+export function toTaskPayload(v: TaskFormValues): TaskPayload {
+  const rrule =
+    v.repeat === 'once'
+      ? ONE_OFF_RRULE
+      : buildRRule({ kind: v.repeat, days: v.days as WeekdayCode[], until: v.until || undefined }, fromKey(v.date))
+  return { title: v.title.trim(), calendarId: v.calendarId, startDate: v.date, rrule: rrule ?? ONE_OFF_RRULE }
+}
+
+/** Lee la repetición de una tarea existente */
+export function taskRepeatOf(task: Task): { repeat: TaskRepeat; days: string[]; until?: string } {
+  if (/COUNT=1(;|$)/.test(task.rrule)) return { repeat: 'once', days: [] }
+  const r = parseRRule(task.rrule, fromKey(task.startDate))
+  return { repeat: r.kind === 'none' ? 'daily' : r.kind, days: r.days, until: r.until }
 }

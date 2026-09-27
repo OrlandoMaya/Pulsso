@@ -1,15 +1,15 @@
 import { Checkbox } from '@/components/ui/checkbox'
-import type { AgendaEvent, AgendaTask } from '@/lib/types'
+import type { AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useToggleCompletion } from './queries'
 
-/** Casilla para tachar una tarea o evento en un día concreto */
+/** Casilla para tachar una tarea en un día concreto (los eventos no se tachan) */
 export function ItemCheckbox({
   item,
   date,
   className,
 }: {
-  item: AgendaTask | AgendaEvent
+  item: AgendaTask
   date: string
   className?: string
 }) {

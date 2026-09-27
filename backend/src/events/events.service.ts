@@ -46,8 +46,8 @@ export class EventsService {
       end,
       allDay,
       rrule: dto.rrule || null,
-      // Los días especiales no se tachan
-      checkable: allDay ? false : (dto.checkable ?? !!dto.rrule),
+      // Los eventos no se tachan (eso es de las tareas)
+      checkable: false,
     });
   }
 
@@ -70,7 +70,7 @@ export class EventsService {
       end,
       allDay,
       rrule: dto.rrule === undefined ? event.rrule : dto.rrule || null,
-      checkable: allDay ? false : (dto.checkable ?? event.checkable),
+      checkable: false,
     });
     return event.save();
   }

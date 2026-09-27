@@ -1,8 +1,15 @@
 import { useState } from 'react'
-import { Clock, MoreHorizontal, Pencil, Plus, Repeat, Sparkles, Trash2 } from 'lucide-react'
+import { Clock, ListChecks, MoreHorizontal, Pencil, Plus, Repeat, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { LogOut } from 'lucide-react'
@@ -77,9 +84,13 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
   const pct = totals?.total ? Math.round((totals.done * 100) / totals.total) : 0
   const today = toKey(new Date())
 
-  const create = (type: EventType) => {
+  const create = (type: EventType | 'task') => {
     onAction?.()
-    openEditor({ mode: 'create', type, date: today })
+    openEditor(
+      type === 'task'
+        ? { mode: 'create', kind: 'task', date: today }
+        : { mode: 'create', kind: 'event', type, date: today },
+    )
   }
 
   return (
@@ -94,6 +105,7 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px]">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Evento</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => create('normal')}>
             <Clock />
             <span className="flex flex-col">
@@ -115,6 +127,15 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
               <span className="text-xs text-muted-foreground">Todo el día: cumpleaños, feriado</span>
             </span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Tarea</DropdownMenuLabel>
+          <DropdownMenuItem onSelect={() => create('task')}>
+            <ListChecks />
+            <span className="flex flex-col">
+              Nueva tarea
+              <span className="text-xs text-muted-foreground">Algo por hacer que se tacha</span>
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -123,14 +144,14 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
       <div className="flex flex-col gap-2.5 rounded-xl border bg-card px-4 py-3.5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">
-            Recurrentes {view === 'dia' ? 'del día' : view === 'semana' ? 'esta semana' : 'este mes'}
+            Tareas {view === 'dia' ? 'del día' : view === 'semana' ? 'de la semana' : 'del mes'}
           </span>
           <span className="font-mono text-[13px] text-muted-foreground">
             {totals ? `${totals.done}/${totals.total}` : '–'}
           </span>
         </div>
         <Progress value={pct} indicatorClassName={cn(pct === 100 && 'bg-emerald-600 dark:bg-emerald-500')} />
-        <p className="text-xs text-muted-foreground">Marca la casilla para tachar una tarea o evento recurrente.</p>
+        <p className="text-xs text-muted-foreground">Marca la casilla para tachar una tarea.</p>
       </div>
 
       <div className="flex flex-col gap-1">

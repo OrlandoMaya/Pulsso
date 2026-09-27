@@ -99,7 +99,7 @@ pnpm format                                 # prettier
   editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮ (mouse, táctil o
   teclado: Espacio + flechas), se mueven a mañana o a la otra lista, y "Pasar
   pendientes a mañana" lleva las no hechas al día siguiente. Al lado, la agenda del día (eventos y recurrentes).
-- **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Diario** con las tareas recurrentes tachables,
+- **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Tareas** con las tareas del día para tachar,
   eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
   un evento a esa hora; clic en el día abre su modal.
 - **Mes** (`/mes/:fecha`): cada día muestra sus tareas tachables, su avance (hechas/total), hasta dos filas
@@ -110,12 +110,12 @@ pnpm format                                 # prettier
   login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
 - **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
   desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
-- **Tipos de evento** (editor y botón "Nuevo"):
-  - **Normal**: un día con hora de inicio y fin.
-  - **Recurrente**: se repite (todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin
-    opcional). *Con horario* aparece como bloque; *sin horario* aparece en la franja "Diario" como tarea para tachar.
-  - **Especial**: día completo sin horas (cumpleaños, feriado), opcionalmente cada año. Se muestra en la fila
-    "Especial" de la semana, arriba de cada día en el mes y al inicio del modal del día.
+- **Eventos y tareas son distintos**:
+  - **Eventos** (no se tachan): **Normal** (un día con hora de inicio y fin), **Recurrente** (con hora; se repite
+    todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin opcional) y **Especial** (día
+    completo sin horas, como un cumpleaños, opcionalmente cada año; se muestra en la fila "Especial").
+  - **Tareas** (se tachan): algo por hacer, solo un día o repetido. Aparecen en la franja **Tareas** de la semana,
+    en cada día del mes y en la sección "Tareas" del modal del día. El avance (hechas/total) cuenta solo tareas.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
   avisa cuántos eventos y tareas se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.

@@ -219,8 +219,12 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
     <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start" aria-label="Agenda del día">
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Agenda</h2>
-          <Button variant="ghost" size="sm" onClick={() => openEditor({ mode: 'create', type: 'normal', date })}>
+          <h2 className="text-sm font-semibold">Calendario del día</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openEditor({ mode: 'create', kind: 'event', type: 'normal', date })}
+          >
             Nuevo evento
           </Button>
         </div>
@@ -233,7 +237,7 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
               <div className="flex flex-col gap-1">
                 <span className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   <Repeat className="size-3" />
-                  Recurrentes
+                  Tareas
                 </span>
                 {day.tasks.map((t) => (
                   <label
@@ -284,7 +288,6 @@ function DayAgenda({ date, day }: { date: string; day?: AgendaDay }) {
                           ev.done && 'opacity-55',
                         )}
                       >
-                        {ev.checkable && <ItemCheckbox item={ev} date={date} className="mt-0.5" />}
                         <button
                           type="button"
                           onClick={() => openEditor({ mode: 'edit', kind: 'event', id: ev.sourceId, date })}

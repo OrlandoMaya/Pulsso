@@ -2,7 +2,8 @@ import { createContext, useContext } from 'react'
 import type { EventType } from '@/lib/event-types'
 
 export type EditorTarget =
-  | { mode: 'create'; type: EventType; date: string; time?: string; timed?: boolean }
+  | { mode: 'create'; kind: 'event'; type: EventType; date: string; time?: string }
+  | { mode: 'create'; kind: 'task'; date: string }
   | { mode: 'edit'; kind: 'event' | 'task'; id: string; date: string }
 
 export interface CalendarActions {

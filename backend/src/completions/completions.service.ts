@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EventsService } from '../events/events.service';
-import { eventOccursOn, taskOccursOn } from '../recurrence/recurrence';
+import { taskOccursOn } from '../recurrence/recurrence';
 import { TasksService } from '../tasks/tasks.service';
 import { SetCompletionDto } from './dto/completion.dto';
 import { Completion } from './schemas/completion.schema';
@@ -55,9 +55,8 @@ export class CompletionsService {
       if (!taskOccursOn(task, dto.date)) throw new BadRequestException('La tarea no toca ese día');
       return;
     }
-    const event = await this.events.findOne(userId, dto.sourceId);
-    if (!event.checkable) throw new BadRequestException('Este evento no se puede tachar');
-    if (!eventOccursOn(event, dto.date))
-      throw new BadRequestException('El evento no ocurre ese día');
+    // Existe y es de esta persona (404 si no), pero los eventos no se tachan
+    await this.events.findOne(userId, dto.sourceId);
+    throw new BadRequestException('Los eventos no se tachan; crea una tarea para eso');
   }
 }

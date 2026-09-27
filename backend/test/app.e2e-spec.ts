@@ -104,7 +104,7 @@ describe('Pulsso API (e2e)', () => {
         rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
       })
       .expect(201);
-    expect(gym.body).toMatchObject({ start: '2026-09-01T07:30', checkable: true });
+    expect(gym.body).toMatchObject({ start: '2026-09-01T07:30', checkable: false });
     await asA(http.post('/api/events'))
       .send({
         calendarId: trabajo,
@@ -121,22 +121,24 @@ describe('Pulsso API (e2e)', () => {
       'Gimnasio',
       'Revisión de diseño',
     ]);
-    expect(day.body.progress).toEqual({ done: 0, total: 2 });
+    // El avance cuenta solo tareas, no eventos
+    expect(day.body.progress).toEqual({ done: 0, total: 1 });
 
     // Tachar
     await asA(http.put('/api/completions'))
       .send({ sourceType: 'task', sourceId: task.body.id, date: '2026-09-25', done: true })
       .expect(200);
+    // Los eventos no se tachan
     await asA(http.put('/api/completions'))
       .send({ sourceType: 'event', sourceId: gym.body.id, date: '2026-09-25', done: true })
-      .expect(200);
+      .expect(400);
     const after = await asA(http.get('/api/agenda/day/2026-09-25')).expect(200);
-    expect(after.body.progress).toEqual({ done: 2, total: 2 });
+    expect(after.body.progress).toEqual({ done: 1, total: 1 });
     expect(after.body.tasks[0].done).toBe(true);
 
     // Otro día no queda tachado
     const other = await asA(http.get('/api/agenda/day/2026-09-23')).expect(200);
-    expect(other.body.progress).toEqual({ done: 0, total: 2 });
+    expect(other.body.progress).toEqual({ done: 0, total: 1 });
 
     // No se puede tachar un día en que no ocurre
     await asA(http.put('/api/completions'))

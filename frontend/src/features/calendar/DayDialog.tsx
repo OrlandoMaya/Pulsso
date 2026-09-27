@@ -19,7 +19,7 @@ import { COLORS } from '@/lib/colors'
 import { capitalize, fromKey, hhmm } from '@/lib/dates'
 import { pairRows } from '@/lib/overlap'
 import { ONE_OFF_RRULE } from '@/lib/recurrence'
-import type { AgendaEvent, AgendaTask } from '@/lib/types'
+import type { AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 import { ItemCheckbox } from './ItemCheckbox'
@@ -61,7 +61,8 @@ function DayContent({
   const day = useDay(date)
   const d = fromKey(date)
   const data = day.data
-  const todo: (AgendaTask | AgendaEvent)[] = data ? [...data.tasks, ...data.events.filter((e) => e.checkable)] : []
+  // Solo las tareas se tachan; los eventos van aparte en su propia sección
+  const todo: AgendaTask[] = data?.tasks ?? []
   const { done = 0, total = 0 } = data?.progress ?? {}
   const pct = total ? Math.round((done * 100) / total) : 0
 
@@ -81,7 +82,7 @@ function DayContent({
             </DialogTitle>
             <DialogDescription>
               {data
-                ? `${data.events.length} ${data.events.length === 1 ? 'evento' : 'eventos'} · ${total - done} ${total - done === 1 ? 'pendiente' : 'pendientes'}`
+                ? `${data.events.length} ${data.events.length === 1 ? 'evento' : 'eventos'} · ${total - done} ${total - done === 1 ? 'tarea pendiente' : 'tareas pendientes'}`
                 : 'Cargando…'}
             </DialogDescription>
           </div>
@@ -114,7 +115,7 @@ function DayContent({
 
         <section className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Por hacer</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Tareas</h3>
             {todo.length > 0 && <span className="text-xs text-muted-foreground">Marca para tachar</span>}
           </div>
           {day.isPending ? (
@@ -134,7 +135,7 @@ function DayContent({
         </section>
 
         <section className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Agenda</h3>
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Eventos</h3>
           {data && !data.events.some((e) => !e.allDay) && (
             <p className="text-sm text-muted-foreground">Sin eventos con hora.</p>
           )}
@@ -197,7 +198,7 @@ function DayContent({
         <Button variant="outline" onClick={onClose}>
           Cerrar
         </Button>
-        <Button onClick={() => openEditor({ mode: 'create', type: 'normal', date })}>
+        <Button onClick={() => openEditor({ mode: 'create', kind: 'event', type: 'normal', date })}>
           <Plus />
           Nuevo evento
         </Button>
@@ -206,26 +207,19 @@ function DayContent({
   )
 }
 
-function TodoRow({ item, date }: { item: AgendaTask | AgendaEvent; date: string }) {
+function TodoRow({ item, date }: { item: AgendaTask; date: string }) {
   const { openEditor } = useCalendarActions()
   const calendars = useCalendars()
   const remove = useDeleteItem()
   const cal = calendars.data?.find((c) => c.id === item.calendarId)
   const c = COLORS[item.color]
-  const isEvent = item.sourceType === 'event'
-  const meta = isEvent ? `${hhmm(item.start)} – ${hhmm(item.end)}` : 'Tarea del día'
-  const recurring = isEvent ? item.recurring : true
 
   return (
-    <li className={cn('flex min-h-[52px] items-center gap-3 px-3.5 py-2', item.done && 'bg-muted/40')}>
+    <li className={cn('flex min-h-12 items-center gap-3 px-3.5 py-2', item.done && 'bg-muted/40')}>
       <ItemCheckbox item={item} date={date} className="size-[18px]" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className={cn('truncate text-sm font-medium', item.done && 'text-muted-foreground line-through')}>
           {item.title}
-        </span>
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          {isEvent && item.recurring && <Repeat className="size-3" />}
-          {meta}
         </span>
       </div>
       {cal && <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', c.soft, c.text)}>{cal.name}</span>}
@@ -242,19 +236,17 @@ function TodoRow({ item, date }: { item: AgendaTask | AgendaEvent; date: string 
             <Pencil />
             Editar
           </DropdownMenuItem>
-          {recurring && (
-            <DropdownMenuItem onSelect={() => remove.mutate({ kind: item.sourceType, id: item.sourceId, date })}>
-              <X />
-              Quitar solo este día
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={() => remove.mutate({ kind: item.sourceType, id: item.sourceId, date })}>
+            <X />
+            Quitar solo este día
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => remove.mutate({ kind: item.sourceType, id: item.sourceId })}
           >
             <Trash2 />
-            {recurring ? 'Eliminar todas' : 'Eliminar'}
+            Eliminar (todos los días)
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

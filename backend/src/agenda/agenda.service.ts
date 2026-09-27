@@ -104,8 +104,9 @@ export class AgendaService {
           end: toDateTimeString(occ.end),
           recurring: !!event.rrule,
           allDay: !!event.allDay,
-          checkable: event.checkable,
-          done: event.checkable && isDone(startKey, event.id),
+          // Los eventos no se tachan: solo las tareas
+          checkable: false,
+          done: false,
         });
       }
     }
@@ -119,8 +120,8 @@ export class AgendaService {
           a.start.localeCompare(b.start) ||
           a.end.localeCompare(b.end),
       );
-      const checkables = [...day.tasks, ...day.events.filter((e) => e.checkable)];
-      day.progress = { done: checkables.filter((c) => c.done).length, total: checkables.length };
+      // El avance del día cuenta solo tareas
+      day.progress = { done: day.tasks.filter((t) => t.done).length, total: day.tasks.length };
     }
 
     return { from: fromKey, to: toKey, days: [...days.values()] };
