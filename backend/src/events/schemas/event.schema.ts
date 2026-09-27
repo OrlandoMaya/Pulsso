@@ -45,6 +45,10 @@ export class CalendarEvent {
   @Prop({ type: [String], default: [] })
   exdates: string[];
 
+  /** Evento especial de día completo (cumpleaños, feriado…): sin horas */
+  @Prop({ default: false })
+  allDay: boolean;
+
   /** Si se puede tachar (por defecto, los recurrentes) */
   @Prop({ default: false })
   checkable: boolean;

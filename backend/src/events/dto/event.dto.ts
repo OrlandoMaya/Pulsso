@@ -40,6 +40,11 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   checkable?: boolean;
+
+  /** Día completo: se usa solo la fecha de `start`; `end` se ajusta al día siguiente */
+  @IsOptional()
+  @IsBoolean()
+  allDay?: boolean;
 }
 
 export class UpdateEventDto extends PartialType(CreateEventDto) {}

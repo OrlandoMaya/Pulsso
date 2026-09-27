@@ -244,6 +244,37 @@ describe('Pulsso API (e2e)', () => {
       .expect(400);
   });
 
+  it('evento especial de día completo, anual', async () => {
+    const token = await register('f@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const cal = (await as(http.get('/api/calendars'))).body[3].id;
+    const bday = await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'Cumpleaños de mamá',
+        start: '2026-09-24T15:30',
+        end: '2026-09-24T15:30',
+        allDay: true,
+        rrule: 'FREQ=YEARLY;BYMONTH=9;BYMONTHDAY=24',
+        checkable: true,
+      })
+      .expect(201);
+    expect(bday.body).toMatchObject({
+      start: '2026-09-24T00:00',
+      end: '2026-09-25T00:00',
+      allDay: true,
+      checkable: false,
+    });
+
+    const day = await as(http.get('/api/agenda/day/2027-09-24')).expect(200);
+    expect(day.body.events).toEqual([
+      expect.objectContaining({ title: 'Cumpleaños de mamá', allDay: true }),
+    ]);
+    expect(day.body.progress.total).toBe(0);
+    const next = await as(http.get('/api/agenda/day/2027-09-25')).expect(200);
+    expect(next.body.events).toEqual([]);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

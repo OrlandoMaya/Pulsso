@@ -27,6 +27,7 @@ export interface AgendaEvent {
   start: string;
   end: string;
   recurring: boolean;
+  allDay: boolean;
   checkable: boolean;
   done: boolean;
 }
@@ -102,6 +103,7 @@ export class AgendaService {
           start: toDateTimeString(occ.start),
           end: toDateTimeString(occ.end),
           recurring: !!event.rrule,
+          allDay: !!event.allDay,
           checkable: event.checkable,
           done: event.checkable && isDone(startKey, event.id),
         });
@@ -110,7 +112,13 @@ export class AgendaService {
 
     for (const day of days.values()) {
       day.tasks.sort((a, b) => a.title.localeCompare(b.title, 'es'));
-      day.events.sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+      // Primero los de día completo, luego por hora
+      day.events.sort(
+        (a, b) =>
+          Number(b.allDay) - Number(a.allDay) ||
+          a.start.localeCompare(b.start) ||
+          a.end.localeCompare(b.end),
+      );
       const checkables = [...day.tasks, ...day.events.filter((e) => e.checkable)];
       day.progress = { done: checkables.filter((c) => c.done).length, total: checkables.length };
     }

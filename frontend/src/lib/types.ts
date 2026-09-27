@@ -24,6 +24,8 @@ export interface CalendarEvent {
   rrule: string | null
   exdates: string[]
   checkable: boolean
+  /** Evento especial de día completo */
+  allDay: boolean
 }
 
 export interface Task {
@@ -54,6 +56,7 @@ export interface AgendaEvent {
   start: string
   end: string
   recurring: boolean
+  allDay: boolean
   checkable: boolean
   done: boolean
 }

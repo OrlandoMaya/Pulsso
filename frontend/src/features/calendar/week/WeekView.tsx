@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { format, isToday } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Repeat } from 'lucide-react'
+import { Repeat, Sparkles } from 'lucide-react'
 import { COLORS } from '@/lib/colors'
 import { durationMinutes, eachDay, fromKey, hhmm, minutesOfDay, toKey } from '@/lib/dates'
 import { layoutOverlaps } from '@/lib/overlap'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../editor-context'
 import { ItemCheckbox } from '../ItemCheckbox'
 import { useNow } from '../navigation'
+import { SpecialChip } from '../SpecialChip'
 
 const HOUR = 56
 const MIN_HEIGHT = 22
@@ -32,6 +33,7 @@ export function WeekView({
   const now = useNow()
   const dates = eachDay(start, end)
   const hasTasks = dates.some((d) => (days.get(toKey(d))?.tasks.length ?? 0) > 0)
+  const hasSpecial = dates.some((d) => days.get(toKey(d))?.events.some((e) => e.allDay))
 
   // Al abrir, baja hasta las 7:00 (o una hora antes de ahora si es más temprano).
   // Se repite cuando aparece la franja "Diario" porque cambia la altura de la cabecera.
@@ -39,7 +41,7 @@ export function WeekView({
   useEffect(() => {
     const hour = Math.max(0, Math.min(7, new Date().getHours() - 1))
     scroller.current?.scrollTo({ top: hour * HOUR })
-  }, [weekKey, hasTasks])
+  }, [weekKey, hasTasks, hasSpecial])
 
   // En móvil la semana se desplaza de lado: empieza en el día elegido
   const focusKey = toKey(focus)
@@ -54,7 +56,7 @@ export function WeekView({
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
     const minutes = Math.floor((y / HOUR) * 2) * 30
     const time = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${minutes % 60 ? '30' : '00'}`
-    openEditor({ mode: 'create', kind: 'event', date: toKey(date), time })
+    openEditor({ mode: 'create', type: 'normal', date: toKey(date), time })
   }
 
   return (
@@ -98,6 +100,31 @@ export function WeekView({
               })}
             </div>
           </div>
+
+          {/* Eventos especiales de día completo */}
+          {hasSpecial && (
+            <div className="flex border-b">
+              <div className="sticky left-0 z-10 flex w-16 shrink-0 flex-col items-end gap-1 bg-background pt-2 pr-2 text-muted-foreground">
+                <Sparkles className="size-3.5" />
+                <span className="text-[10px] font-medium tracking-wide uppercase">Especial</span>
+              </div>
+              <div className="grid flex-1 grid-cols-7">
+                {dates.map((d) => {
+                  const key = toKey(d)
+                  return (
+                    <div key={key} className="flex min-w-0 flex-col gap-1 border-l p-1.5">
+                      {days
+                        .get(key)
+                        ?.events.filter((e) => e.allDay)
+                        .map((e) => (
+                          <SpecialChip key={e.sourceId} event={e} date={key} />
+                        ))}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Tareas recurrentes sin hora */}
           {hasTasks && (
@@ -152,7 +179,7 @@ export function WeekView({
           >
             {dates.map((d, i) => {
               const key = toKey(d)
-              const events = days.get(key)?.events ?? []
+              const events = (days.get(key)?.events ?? []).filter((e) => !e.allDay)
               return (
                 <div
                   key={key}

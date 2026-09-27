@@ -110,8 +110,14 @@ pnpm format                                 # prettier
   login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
 - **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
   desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
-- **Editor**: evento o tarea recurrente, con repetición (diaria, entre semana, días elegidos, mensual,
-  anual), fecha de fin opcional y la opción "Se puede tachar".
+- **Tipos de evento** (editor y botón "Nuevo"):
+  - **Normal**: un día con hora de inicio y fin.
+  - **Recurrente**: se repite (todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin
+    opcional). *Con horario* aparece como bloque; *sin horario* aparece en la franja "Diario" como tarea para tachar.
+  - **Especial**: día completo sin horas (cumpleaños, feriado), opcionalmente cada año. Se muestra en la fila
+    "Especial" de la semana, arriba de cada día en el mes y al inicio del modal del día.
+- **Categorías** (Trabajo, Equipo, Clientes, Personal, Otros): dan el color a cada evento y se pueden ocultar
+  desde la barra lateral. En la API se llaman `calendars`.
 
 Estructura:
 
@@ -151,7 +157,7 @@ dentro de `frontend/`.
 | `GET` | `/auth/me` | Usuario de la sesión |
 | `GET` `POST` | `/calendars` | Listar / crear `{ name, color, visible? }` |
 | `PATCH` `DELETE` | `/calendars/:id` | Editar / borrar (borra también sus eventos y tareas) |
-| `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable? }` |
+| `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable?, allDay? }` (`allDay`: día completo, solo usa la fecha de `start`) |
 | `GET` `PATCH` `DELETE` | `/events/:id` | Ver / editar (`rrule: null` quita la repetición) / borrar |
 | `POST` | `/events/:id/exdates` | `{ date }` borra solo esa ocurrencia |
 | `GET` `POST` | `/tasks` | Tareas recurrentes sin hora `{ calendarId, title, startDate, rrule }` |

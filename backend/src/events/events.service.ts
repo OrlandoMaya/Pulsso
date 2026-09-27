@@ -36,15 +36,18 @@ export class EventsService {
 
   async create(userId: string, dto: CreateEventDto) {
     await this.calendars.findOne(userId, dto.calendarId);
-    const { start, end } = this.parseRange(dto.start, dto.end);
+    const allDay = dto.allDay ?? false;
+    const { start, end } = this.parseRange(dto.start, dto.end, allDay);
     return this.events.create({
       ...dto,
       userId: new Types.ObjectId(userId),
       calendarId: new Types.ObjectId(dto.calendarId),
       start,
       end,
+      allDay,
       rrule: dto.rrule || null,
-      checkable: dto.checkable ?? !!dto.rrule,
+      // Los días especiales no se tachan
+      checkable: allDay ? false : (dto.checkable ?? !!dto.rrule),
     });
   }
 
@@ -54,17 +57,20 @@ export class EventsService {
       await this.calendars.findOne(userId, dto.calendarId);
       event.calendarId = new Types.ObjectId(dto.calendarId);
     }
+    const allDay = dto.allDay ?? event.allDay ?? false;
     const { start, end } = this.parseRange(
       dto.start ?? toLocal(event.start),
       dto.end ?? toLocal(event.end),
+      allDay,
     );
     event.set({
       title: dto.title ?? event.title,
       notes: dto.notes ?? event.notes,
       start,
       end,
+      allDay,
       rrule: dto.rrule === undefined ? event.rrule : dto.rrule || null,
-      checkable: dto.checkable ?? event.checkable,
+      checkable: allDay ? false : (dto.checkable ?? event.checkable),
     });
     return event.save();
   }
@@ -87,7 +93,12 @@ export class EventsService {
     return this.findOne(userId, id);
   }
 
-  private parseRange(startStr: string, endStr: string) {
+  private parseRange(startStr: string, endStr: string, allDay = false) {
+    if (allDay) {
+      // Día completo: de las 00:00 de ese día a las 00:00 del siguiente
+      const start = parseDateTime(`${startStr.slice(0, 10)}T00:00`);
+      return { start, end: new Date(start.getTime() + 86_400_000) };
+    }
     const start = parseDateTime(startStr);
     const end = parseDateTime(endStr);
     if (end <= start) throw new BadRequestException('La hora de fin debe ser posterior al inicio');
