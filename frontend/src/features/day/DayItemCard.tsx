@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { addDays } from 'date-fns'
-import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarArrowUp, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarArrowUp, GripVertical, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -25,6 +27,9 @@ interface Props {
 export function DayItemCard({ item, index, count, onMove }: Props) {
   const update = useUpdateDayItem()
   const remove = useDeleteDayItem()
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  })
   const [title, setTitle] = useState(item.title)
   const [description, setDescription] = useState(item.description)
 
@@ -50,11 +55,29 @@ export function DayItemCard({ item, index, count, onMove }: Props) {
 
   return (
     <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'group flex gap-3 rounded-xl border bg-card p-3 pr-2 shadow-xs transition-colors sm:p-4 sm:pr-3',
+        'group relative flex gap-2 rounded-xl border bg-card p-3 pr-2 pl-1.5 shadow-xs transition-colors sm:gap-3 sm:p-4 sm:pr-3 sm:pl-2',
         item.done && 'bg-muted/40',
+        isDragging && 'z-10 cursor-grabbing border-ring bg-card shadow-lg ring-2 ring-ring/30',
       )}
     >
+      {/* Asa para arrastrar (mouse, táctil o teclado: Espacio y flechas) */}
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={`Reordenar ${item.title}`}
+        className={cn(
+          'mt-0.5 flex h-6 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground/50 outline-none hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
+          isDragging && 'cursor-grabbing text-foreground',
+          count < 2 && 'invisible',
+        )}
+      >
+        <GripVertical className="size-4" />
+      </button>
       <Checkbox
         checked={item.done}
         onCheckedChange={(v) => update.mutate({ item, patch: { done: v === true } })}

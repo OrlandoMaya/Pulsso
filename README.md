@@ -96,7 +96,8 @@ pnpm format                                 # prettier
 - **Login / Crear cuenta** (`/login`): la sesión se guarda en el navegador; si el token vence, vuelve al login.
 - **Día** (`/dia/:fecha?lista=trabajo|personal`): lista de tareas del día con **descripción**, separada en
   **Personal** y **Trabajo** (se recuerda la última usada). Ideal para los objetivos diarios: se tachan, se
-  editan en línea (título y descripción), se reordenan, se mueven a mañana o a la otra lista, y "Pasar
+  editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮ (mouse, táctil o
+  teclado: Espacio + flechas), se mueven a mañana o a la otra lista, y "Pasar
   pendientes a mañana" lleva las no hechas al día siguiente. Al lado, la agenda del día (eventos y recurrentes).
 - **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Diario** con las tareas recurrentes tachables,
   eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea

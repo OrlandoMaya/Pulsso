@@ -1,3 +1,16 @@
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { addDays } from 'date-fns'
 import { Briefcase, CalendarDays, Columns2, ListChecks, MoreHorizontal, Repeat, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +21,7 @@ import { COLORS } from '@/lib/colors'
 import { hhmm, toKey } from '@/lib/dates'
 import { pairRows } from '@/lib/overlap'
 import { moveBy } from '@/lib/reorder'
-import type { AgendaDay, DayList } from '@/lib/types'
+import type { AgendaDay, DayItem, DayList } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
 import { ItemCheckbox } from '../calendar/ItemCheckbox'
@@ -31,6 +44,21 @@ export function DayView({ date, agenda }: { date: Date; agenda?: AgendaDay }) {
   const items = current.data ?? []
   const reorder = useReorderDayItems(key, list)
   const carryOver = useCarryOver()
+
+  const sensors = useSensors(
+    // Un pequeño margen para no confundir clic con arrastre
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    const from = items.findIndex((i) => i.id === active.id)
+    const to = items.findIndex((i) => i.id === over.id)
+    if (from < 0 || to < 0) return
+    reorder.mutate(arrayMove(items, from, to))
+  }
 
   const done = items.filter((i) => i.done).length
   const pct = items.length ? Math.round((done * 100) / items.length) : 0
@@ -119,17 +147,27 @@ export function DayView({ date, agenda }: { date: Date; agenda?: AgendaDay }) {
               </p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {items.map((item, i) => (
-                <DayItemCard
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  count={items.length}
-                  onMove={(dir) => reorder.mutate(moveBy(items, i, dir))}
-                />
-              ))}
-            </ul>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+              onDragEnd={onDragEnd}
+              accessibility={{ announcements: announcements(items), screenReaderInstructions }}
+            >
+              <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <ul className="flex flex-col gap-2">
+                  {items.map((item, i) => (
+                    <DayItemCard
+                      key={item.id}
+                      item={item}
+                      index={i}
+                      count={items.length}
+                      onMove={(dir) => reorder.mutate(moveBy(items, i, dir))}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
           )}
         </section>
 
@@ -137,6 +175,29 @@ export function DayView({ date, agenda }: { date: Date; agenda?: AgendaDay }) {
       </div>
     </div>
   )
+}
+
+const screenReaderInstructions = {
+  draggable:
+    'Para reordenar, presiona Espacio o Enter. Usa las flechas arriba y abajo para mover la tarea, Espacio o Enter para soltarla, o Escape para cancelar.',
+}
+
+/** Mensajes en español para lectores de pantalla */
+function announcements(items: DayItem[]): Announcements {
+  const title = (id: string | number) => items.find((i) => i.id === id)?.title ?? 'la tarea'
+  const pos = (id: string | number) => items.findIndex((i) => i.id === id) + 1
+  return {
+    onDragStart: ({ active }) => `Tomaste ${title(active.id)}, posición ${pos(active.id)} de ${items.length}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${title(active.id)} está en la posición ${pos(over.id)} de ${items.length}.`
+        : `${title(active.id)} fuera de la lista.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `Soltaste ${title(active.id)} en la posición ${pos(over.id)} de ${items.length}.`
+        : `Soltaste ${title(active.id)}.`,
+    onDragCancel: ({ active }) => `Cancelado. ${title(active.id)} volvió a su lugar.`,
+  }
 }
 
 /** Eventos y recurrentes del calendario para este día */
