@@ -17,7 +17,7 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors({
     origin: config
-      .get<string>('CORS_ORIGIN', 'http://localhost:5173')
+      .get<string>('CORS_ORIGIN', 'http://localhost:4040')
       .split(',')
       .map((o) => o.trim()),
   });
@@ -26,6 +26,6 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  await app.listen(config.get<number>('PORT', 3000));
+  await app.listen(config.get<number>('PORT', 4000));
 }
 bootstrap();

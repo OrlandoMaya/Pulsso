@@ -9,8 +9,8 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   server: {
-    port: 5173,
+    port: 4040,
     // En desarrollo, /api va al backend de Nest
-    proxy: { '/api': 'http://localhost:3000' },
+    proxy: { '/api': 'http://localhost:4000' },
   },
 })

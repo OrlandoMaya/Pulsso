@@ -28,14 +28,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # --- Imagen final ---
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \
-    PORT=3000
+    PORT=4000
 WORKDIR /repo/backend
 COPY --from=prod-deps --chown=node:node /repo/node_modules /repo/node_modules
 COPY --from=prod-deps --chown=node:node /repo/backend/node_modules ./node_modules
 COPY --from=build --chown=node:node /repo/backend/package.json ./
 COPY --from=build --chown=node:node /repo/backend/dist ./dist
 USER node
-EXPOSE 3000
+EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/api/health" >/dev/null || exit 1
 # MONGODB_URI y JWT_SECRET llegan como variables de entorno, nunca dentro de la imagen
