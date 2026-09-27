@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight, LogOut, Menu } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LogOut, Menu, Workflow } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,6 +19,8 @@ import { ThemeToggle } from '../theme/ThemeToggle'
 const VIEW_LABEL: Record<View, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' }
 
 interface Props {
+  /** Pendientes: sin navegación de fechas */
+  section?: 'pendientes'
   view: View
   date: Date
   subtitle?: string
@@ -27,7 +29,7 @@ interface Props {
   onMenu: () => void
 }
 
-export function Toolbar({ view, date, subtitle, onToday, onShift, onMenu }: Props) {
+export function Toolbar({ section, view, date, subtitle, onToday, onShift, onMenu }: Props) {
   const unit = VIEW_LABEL[view]
 
   return (
@@ -35,36 +37,57 @@ export function Toolbar({ view, date, subtitle, onToday, onShift, onMenu }: Prop
       <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú" onClick={onMenu}>
         <Menu />
       </Button>
-      <Button variant="outline" className="px-3 sm:px-4" onClick={onToday}>
-        Hoy
-      </Button>
-      <div className="flex gap-1">
-        <Button variant="outline" size="icon" aria-label={`${unit} anterior`} onClick={() => onShift(-1)}>
-          <ChevronLeft />
-        </Button>
-        <Button variant="outline" size="icon" aria-label={`${unit} siguiente`} onClick={() => onShift(1)}>
-          <ChevronRight />
-        </Button>
-      </div>
-      <div className="order-last flex w-full min-w-0 flex-col px-1 sm:order-none sm:ml-1 sm:w-auto sm:px-0">
-        <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{rangeTitle(view, date)}</h1>
-        {subtitle && <span className="hidden text-xs text-muted-foreground sm:block">{subtitle}</span>}
-      </div>
+      {section ? (
+        <div className="order-last flex w-full min-w-0 flex-col px-1 sm:order-none sm:w-auto sm:px-0">
+          <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">Pendientes y proyectos</h1>
+          <span className="hidden text-xs text-muted-foreground sm:block">Lo que no tiene un día fijo</span>
+        </div>
+      ) : (
+        <>
+          <Button variant="outline" className="px-3 sm:px-4" onClick={onToday}>
+            Hoy
+          </Button>
+          <div className="flex gap-1">
+            <Button variant="outline" size="icon" aria-label={`${unit} anterior`} onClick={() => onShift(-1)}>
+              <ChevronLeft />
+            </Button>
+            <Button variant="outline" size="icon" aria-label={`${unit} siguiente`} onClick={() => onShift(1)}>
+              <ChevronRight />
+            </Button>
+          </div>
+          <div className="order-last flex w-full min-w-0 flex-col px-1 sm:order-none sm:ml-1 sm:w-auto sm:px-0">
+            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{rangeTitle(view, date)}</h1>
+            {subtitle && <span className="hidden text-xs text-muted-foreground sm:block">{subtitle}</span>}
+          </div>
+        </>
+      )}
       <div className="flex-1" />
       <nav aria-label="Vista" className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px]">
         {(['dia', 'semana', 'mes'] as const).map((v) => (
           <Link
             key={v}
-            to={`/${v}/${toKey(date)}`}
-            aria-current={v === view ? 'page' : undefined}
+            to={`/${v}/${toKey(section ? new Date() : date)}`}
+            aria-current={!section && v === view ? 'page' : undefined}
             className={cn(
               'flex h-full items-center rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
-              v === view && 'bg-background text-foreground shadow-sm dark:bg-input/40',
+              !section && v === view && 'bg-background text-foreground shadow-sm dark:bg-input/40',
             )}
           >
             {VIEW_LABEL[v]}
           </Link>
         ))}
+        <Link
+          to="/pendientes"
+          aria-current={section ? 'page' : undefined}
+          title="Pendientes y proyectos"
+          className={cn(
+            'flex h-full items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
+            section && 'bg-background text-foreground shadow-sm dark:bg-input/40',
+          )}
+        >
+          <Workflow className="size-4" />
+          <span className="max-md:sr-only">Proyectos</span>
+        </Link>
       </nav>
       <ThemeToggle className="hidden sm:inline-flex" />
       <div className="hidden sm:block">

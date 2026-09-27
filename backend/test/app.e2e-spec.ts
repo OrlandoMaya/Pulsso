@@ -336,6 +336,171 @@ describe('Pulsso API (e2e)', () => {
     await as(http.delete(`/api/calendars/${all[0].id}`)).expect(400);
   });
 
+  it('eventos de varios días aparecen en cada día', async () => {
+    const token = await register('i@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const cal = (await as(http.get('/api/calendars'))).body[3].id;
+    const trip = await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'Vacaciones',
+        start: '2026-09-21T00:00',
+        end: '2026-09-25T00:00',
+        allDay: true,
+      })
+      .expect(201);
+    expect(trip.body).toMatchObject({ start: '2026-09-21T00:00', end: '2026-09-26T00:00' });
+    await as(http.post('/api/events'))
+      .send({ calendarId: cal, title: 'Viaje', start: '2026-09-25T18:00', end: '2026-09-27T12:00' })
+      .expect(201);
+
+    const week = await as(
+      http.get('/api/agenda').query({ from: '2026-09-21', to: '2026-09-28' }),
+    ).expect(200);
+    const titles = week.body.days.map((d: { events: { title: string }[] }) =>
+      d.events.map((e) => e.title),
+    );
+    expect(titles).toEqual([
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones', 'Viaje'],
+      ['Viaje'],
+      ['Viaje'],
+      [],
+    ]);
+    await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'x',
+        start: '2026-09-25T00:00',
+        end: '2026-09-21T00:00',
+        allDay: true,
+      })
+      .expect(400);
+  });
+
+  it('tareas generales y proyectos con diagrama que se programa en el calendario', async () => {
+    const token = await register('p@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const cal = (await as(http.get('/api/calendars'))).body[0].id;
+
+    const general = await as(http.post('/api/general-tasks'))
+      .send({ calendarId: cal, title: 'Renovar pasaporte' })
+      .expect(201);
+    expect(general.body).toMatchObject({ isProject: false, done: false });
+    expect(general.body.nodes).toBeUndefined();
+    await as(http.patch(`/api/general-tasks/${general.body.id}`))
+      .send({ done: true })
+      .expect(200);
+
+    const project = await as(http.post('/api/general-tasks'))
+      .send({ calendarId: cal, title: 'Lanzar web', isProject: true })
+      .expect(201);
+    const pid = project.body.id;
+    expect(project.body.nodes.map((n: { type: string }) => n.type)).toEqual([
+      'start',
+      'activity',
+      'end',
+    ]);
+
+    const nodes = [
+      { id: 'inicio', type: 'start', x: 0, y: 0 },
+      { id: 'dis', type: 'activity', title: 'Diseño', x: 0, y: 100, status: 'done' },
+      { id: 'dev', type: 'activity', title: 'Desarrollo', x: 0, y: 200, status: 'in_progress' },
+      { id: 'ok', type: 'decision', title: '¿Aprobado?', x: 0, y: 300 },
+      { id: 'fin', type: 'end', x: 0, y: 400 },
+    ];
+    const edges = [
+      { id: 'e1', source: 'inicio', target: 'dis' },
+      { id: 'e2', source: 'dis', target: 'dev' },
+      { id: 'e3', source: 'dev', target: 'ok' },
+      { id: 'e4', source: 'ok', target: 'fin', label: 'Sí' },
+      { id: 'e5', source: 'ok', target: 'dev', label: 'No' },
+    ];
+    const saved = await as(http.put(`/api/general-tasks/${pid}/diagram`))
+      .send({ nodes, edges })
+      .expect(200);
+    expect(saved.body.progress).toEqual({ done: 1, inProgress: 1, total: 2 });
+    await as(http.put(`/api/general-tasks/${pid}/diagram`))
+      .send({ nodes, edges: [{ id: 'x', source: 'dis', target: 'nada' }] })
+      .expect(400);
+    await as(http.put(`/api/general-tasks/${general.body.id}/diagram`))
+      .send({ nodes, edges })
+      .expect(400);
+
+    // Programar "Desarrollo" como tarea y "Diseño" como evento
+    await as(http.post('/api/tasks'))
+      .send({
+        calendarId: cal,
+        title: 'x',
+        startDate: '2026-10-01',
+        rrule: 'FREQ=DAILY;COUNT=1',
+        projectId: pid,
+        nodeId: 'ok',
+      })
+      .expect(400); // una decisión no se programa
+    const task = await as(http.post('/api/tasks'))
+      .send({
+        calendarId: cal,
+        title: 'Desarrollo',
+        startDate: '2026-10-01',
+        rrule: 'FREQ=DAILY;COUNT=1',
+        projectId: pid,
+        nodeId: 'dev',
+      })
+      .expect(201);
+    expect(task.body).toMatchObject({ projectId: pid, nodeId: 'dev' });
+    await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'Diseño',
+        start: '2026-09-30T10:00',
+        end: '2026-09-30T12:00',
+        projectId: pid,
+        nodeId: 'dis',
+      })
+      .expect(201);
+
+    const day = await as(http.get('/api/agenda/day/2026-10-01')).expect(200);
+    expect(day.body.tasks[0].project).toEqual({ id: pid, title: 'Lanzar web' });
+
+    // Tachar la tarea en el calendario marca hecha la actividad
+    await as(http.put('/api/completions'))
+      .send({ sourceType: 'task', sourceId: task.body.id, date: '2026-10-01', done: true })
+      .expect(200);
+    const full = await as(http.get(`/api/general-tasks/${pid}`)).expect(200);
+    const dev = full.body.nodes.find((n: { id: string }) => n.id === 'dev');
+    expect(dev).toMatchObject({
+      status: 'done',
+      scheduled: { kind: 'task', date: '2026-10-01', done: true },
+    });
+    expect(full.body.nodes.find((n: { id: string }) => n.id === 'dis').scheduled).toMatchObject({
+      kind: 'event',
+      start: '2026-09-30T10:00',
+    });
+
+    const list = await as(http.get('/api/general-tasks')).expect(200);
+    expect(list.body.map((g: { title: string }) => g.title)).toEqual([
+      'Lanzar web',
+      'Renovar pasaporte',
+    ]);
+    expect(list.body[0].progress).toEqual({ done: 2, inProgress: 0, total: 2 });
+
+    // Borrar el proyecto deja la tarea en el calendario, sin vínculo
+    await as(http.delete(`/api/general-tasks/${pid}`)).expect(204);
+    const after = await as(http.get(`/api/tasks/${task.body.id}`)).expect(200);
+    expect(after.body.projectId).toBeNull();
+
+    // Otro usuario no la ve
+    const other = await register('p2@pulsso.dev');
+    await http
+      .get(`/api/general-tasks/${general.body.id}`)
+      .auth(other, { type: 'bearer' })
+      .expect(404);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

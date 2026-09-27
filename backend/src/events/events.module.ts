@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { GeneralTasksModule } from '../general-tasks/general-tasks.module';
 import { CalendarsModule } from '../calendars/calendars.module';
 import { Completion, CompletionSchema } from '../completions/schemas/completion.schema';
 import { EventsController } from './events.controller';
@@ -9,6 +10,7 @@ import { CalendarEvent, EventSchema } from './schemas/event.schema';
 @Module({
   imports: [
     CalendarsModule,
+    GeneralTasksModule,
     MongooseModule.forFeature([
       { name: CalendarEvent.name, schema: EventSchema },
       { name: Completion.name, schema: CompletionSchema },

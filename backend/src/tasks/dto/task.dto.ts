@@ -1,12 +1,14 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
 import {
   ArrayMaxSize,
   IsArray,
   IsMongoId,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { IsDateKey, IsRRule } from '../../recurrence/validators';
 
@@ -29,9 +31,18 @@ export class CreateTaskDto {
 
   @IsRRule()
   rrule: string;
+
+  /** Programar un elemento de un proyecto: queda vinculado a él */
+  @IsOptional()
+  @IsMongoId()
+  projectId?: string;
+
+  @ValidateIf((o) => o.projectId !== undefined)
+  @Matches(/^[A-Za-z0-9_-]{1,40}$/)
+  nodeId?: string;
 }
 
-export class UpdateTaskDto extends PartialType(CreateTaskDto) {}
+export class UpdateTaskDto extends PartialType(OmitType(CreateTaskDto, ['projectId', 'nodeId'])) {}
 
 export class ReorderTasksDto {
   /** Ids en el orden nuevo (los que se ven en la lista) */

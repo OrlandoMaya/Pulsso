@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { format } from 'date-fns'
+import { differenceInCalendarDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { CalendarDays, ListChecks, Loader2, Repeat, Trash2, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,7 @@ import {
   type Recurrence,
   type RepeatRule,
 } from '@/lib/event-types'
+import { lastDayKey } from '@/lib/multiday'
 import { WEEKDAYS, weekdayOf } from '@/lib/recurrence'
 import type { CalendarEvent, Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,7 @@ const schema = z
     title: z.string().trim().min(1, 'Escribe un título').max(120),
     calendarId: z.string().min(1, 'Elige una categoría'),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
     allDay: z.boolean(),
     startTime: z.string(),
     endTime: z.string(),
@@ -53,9 +55,13 @@ const schema = z
     notes: z.string().max(2000).optional(),
     description: z.string().max(5000).optional(),
   })
-  .refine((v) => v.kind === 'task' || v.allDay || v.endTime > v.startTime, {
+  .refine((v) => v.kind === 'task' || !v.allDay || v.endDate >= v.date, {
+    path: ['endDate'],
+    message: 'Debe ser igual o posterior al primer día',
+  })
+  .refine((v) => v.kind === 'task' || v.allDay || `${v.endDate}T${v.endTime}` > `${v.date}T${v.startTime}`, {
     path: ['endTime'],
-    message: 'La hora de fin debe ser posterior al inicio',
+    message: 'El fin debe ser posterior al inicio',
   })
   .refine((v) => v.recurrence === 'normal' || !v.until || v.until >= v.date, {
     path: ['until'],
@@ -135,6 +141,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       title: event.title,
       calendarId: event.calendarId,
       date,
+      endDate: event.allDay ? lastDayKey(event) : event.end.slice(0, 10),
       allDay: event.allDay,
       startTime: event.allDay ? '09:00' : event.start.slice(11, 16),
       endTime: event.allDay ? '10:00' : event.end.slice(11, 16),
@@ -149,6 +156,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       title: task.title,
       calendarId: task.calendarId,
       date: task.startDate,
+      endDate: task.startDate,
       allDay: false,
       startTime: '09:00',
       endTime: '10:00',
@@ -164,14 +172,15 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
     repeat: 'daily',
     days: [weekdayOf(fromKey(target.date))],
     until: '',
-    title: '',
+    title: t?.title ?? '',
     calendarId: '',
     date: target.date,
+    endDate: target.date,
     allDay: t?.allDay ?? false,
     startTime: time,
     endTime: endAfter(time),
-    notes: '',
-    description: '',
+    notes: t?.notes ?? '',
+    description: t?.notes ?? '',
   }
 }
 
@@ -202,7 +211,13 @@ function EditorForm({
   const allDay = useWatch({ control, name: 'allDay' })
   const repeat = useWatch({ control, name: 'repeat' })
   const date = useWatch({ control, name: 'date' })
+  const endDate = useWatch({ control, name: 'endDate' })
   const calendarId = useWatch({ control, name: 'calendarId' })
+
+  // Si el inicio pasa del fin, el fin se mueve con él
+  useEffect(() => {
+    if (date && endDate < date) setValue('endDate', date)
+  }, [date, endDate, setValue])
 
   // Categoría por defecto: la primera visible
   useEffect(() => {
@@ -217,8 +232,10 @@ function EditorForm({
 
   const onSubmit = handleSubmit(async (v) => {
     const id = editing ? target.id : undefined
-    if (v.kind === 'task') await saveTask.mutateAsync({ id, data: toTaskPayload(v) })
-    else await saveEvent.mutateAsync({ id, data: toEventPayload(v) })
+    // Programar una actividad de un proyecto: queda vinculada
+    const link = target.mode === 'create' ? target.link : undefined
+    if (v.kind === 'task') await saveTask.mutateAsync({ id, data: { ...toTaskPayload(v), ...link } })
+    else await saveEvent.mutateAsync({ id, data: { ...toEventPayload(v), ...link } })
     onClose()
   })
 
@@ -235,14 +252,16 @@ function EditorForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <DialogHeader>
         <DialogTitle>
-          {editing ? 'Editar' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
+          {editing ? 'Editar' : target.link ? 'Programar como' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
         </DialogTitle>
         <DialogDescription>
-          {savedRecurring
-            ? 'Los cambios se aplican a todas las repeticiones.'
-            : isEvent
-              ? 'Ocurre en el calendario; no se tacha.'
-              : 'Algo por hacer que tachas al terminar.'}
+          {target.mode === 'create' && target.link
+            ? 'La actividad del proyecto queda en el calendario y se mantiene vinculada.'
+            : savedRecurring
+              ? 'Los cambios se aplican a todas las repeticiones.'
+              : isEvent
+                ? 'Ocurre en el calendario; no se tacha.'
+                : 'Algo por hacer que tachas al terminar.'}
         </DialogDescription>
       </DialogHeader>
 
@@ -287,7 +306,7 @@ function EditorForm({
         />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={cn('grid gap-4', !isEvent && 'sm:grid-cols-2')}>
         <Field label="Categoría" error={formState.errors.calendarId?.message}>
           <Controller
             control={control}
@@ -309,9 +328,11 @@ function EditorForm({
             )}
           />
         </Field>
-        <Field label={isRecurring ? 'Empieza el' : 'Día'} htmlFor="date" error={formState.errors.date?.message}>
-          <Input id="date" type="date" {...register('date')} />
-        </Field>
+        {!isEvent && (
+          <Field label={isRecurring ? 'Empieza el' : 'Día'} htmlFor="date" error={formState.errors.date?.message}>
+            <Input id="date" type="date" {...register('date')} />
+          </Field>
+        )}
       </div>
 
       {isEvent && (
@@ -329,15 +350,43 @@ function EditorForm({
               </label>
             )}
           />
-          {!allDay && (
+          {allDay ? (
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Inicio" htmlFor="startTime">
+              <Field
+                label={isRecurring ? 'Desde (primera vez)' : 'Desde'}
+                htmlFor="date"
+                error={formState.errors.date?.message}
+              >
+                <Input id="date" type="date" {...register('date')} />
+              </Field>
+              <Field label="Hasta" htmlFor="endDate" error={formState.errors.endDate?.message}>
+                <Input id="endDate" type="date" min={date} {...register('endDate')} />
+              </Field>
+            </div>
+          ) : (
+            <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-x-4 gap-y-3">
+              <Field
+                label={isRecurring ? 'Empieza (primera vez)' : 'Empieza'}
+                htmlFor="date"
+                error={formState.errors.date?.message}
+              >
+                <Input id="date" type="date" {...register('date')} />
+              </Field>
+              <Field label="Hora de inicio" htmlFor="startTime">
                 <Input id="startTime" type="time" step={300} {...register('startTime')} />
               </Field>
-              <Field label="Fin" htmlFor="endTime" error={formState.errors.endTime?.message}>
+              <Field label="Termina" htmlFor="endDate" error={formState.errors.endTime?.message}>
+                <Input id="endDate" type="date" min={date} {...register('endDate')} />
+              </Field>
+              <Field label="Hora de fin" htmlFor="endTime">
                 <Input id="endTime" type="time" step={300} {...register('endTime')} />
               </Field>
             </div>
+          )}
+          {endDate > date && (
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Dura {differenceInCalendarDays(fromKey(endDate), fromKey(date)) + 1} días.
+            </p>
           )}
         </>
       )}

@@ -44,6 +44,12 @@ const router = createBrowserRouter([
           { path: '/dia/:date?', element: <CalendarPage view="dia" /> },
           { path: '/semana/:date?', element: <CalendarPage view="semana" /> },
           { path: '/mes/:date?', element: <CalendarPage view="mes" /> },
+          { path: '/pendientes', element: <CalendarPage view="mes" section="pendientes" /> },
+          {
+            path: '/proyectos/:id',
+            // El lienzo (React Flow) se carga solo al abrir un proyecto
+            lazy: async () => ({ Component: (await import('./features/projects/ProjectPage')).ProjectPage }),
+          },
           { path: '*', element: <Navigate to={`/semana/${toKey(new Date())}`} replace /> },
         ],
       },

@@ -23,6 +23,8 @@ export interface EventFormValues extends RepeatValues {
   title: string
   calendarId: string
   date: string
+  /** Último día (para eventos de varios días); igual a `date` si es de un día */
+  endDate: string
   allDay: boolean
   startTime: string
   endTime: string
@@ -51,8 +53,9 @@ export function toEventPayload(v: EventFormValues): EventPayload {
     notes: v.notes?.trim() || undefined,
     checkable: false,
     allDay: v.allDay,
+    // Todo el día: la API recibe primer y último día; si no, fecha y hora de inicio y fin
     start: v.allDay ? `${v.date}T00:00` : `${v.date}T${v.startTime}`,
-    end: v.allDay ? `${v.date}T00:00` : `${v.date}T${v.endTime}`,
+    end: v.allDay ? `${v.endDate}T00:00` : `${v.endDate}T${v.endTime}`,
     rrule: ruleOf(v, v.date),
   }
 }

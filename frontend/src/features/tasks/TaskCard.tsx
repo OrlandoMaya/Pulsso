@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { addDays } from 'date-fns'
@@ -12,6 +13,7 @@ import {
   Repeat,
   Tag,
   Trash2,
+  Workflow,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -141,6 +143,15 @@ export function TaskCard({ task, date, index, count, onMove, compact = false }: 
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {category && (
             <span className={cn('rounded-full px-2 py-0.5 font-medium', c.soft, c.text)}>{category.name}</span>
+          )}
+          {task.project && (
+            <Link
+              to={`/proyectos/${task.project.id}`}
+              className="flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Workflow className="size-3 shrink-0" />
+              <span className="truncate">{task.project.title}</span>
+            </Link>
           )}
           {task.recurring && (
             <span className="flex items-center gap-1 text-muted-foreground">

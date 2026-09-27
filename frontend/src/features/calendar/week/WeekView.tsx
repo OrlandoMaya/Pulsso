@@ -11,6 +11,7 @@ import { useCalendarActions } from '../editor-context'
 import { ItemCheckbox } from '../ItemCheckbox'
 import { useNow } from '../navigation'
 import { SpecialChip } from '../SpecialChip'
+import { isBanner, layoutBars } from '@/lib/multiday'
 
 const HOUR = 56
 const MIN_HEIGHT = 22
@@ -33,7 +34,13 @@ export function WeekView({
   const now = useNow()
   const dates = eachDay(start, end)
   const hasTasks = dates.some((d) => (days.get(toKey(d))?.tasks.length ?? 0) > 0)
-  const hasSpecial = dates.some((d) => days.get(toKey(d))?.events.some((e) => e.allDay))
+  const keys = dates.map(toKey)
+  // Todo el día y varios días: barras que cruzan las columnas, en carriles
+  const bars = layoutBars(
+    keys.flatMap((k) => (days.get(k)?.events ?? []).filter(isBanner)),
+    keys,
+  )
+  const hasSpecial = bars.length > 0
 
   // Al abrir, baja hasta las 7:00 (o una hora antes de ahora si es más temprano).
   // Se repite cuando aparece la franja de tareas porque cambia la altura de la cabecera.
@@ -110,20 +117,24 @@ export function WeekView({
                   Todo el día
                 </span>
               </div>
-              <div className="grid flex-1 grid-cols-7">
-                {dates.map((d) => {
-                  const key = toKey(d)
-                  return (
-                    <div key={key} className="flex min-w-0 flex-col gap-1 border-l p-1.5">
-                      {days
-                        .get(key)
-                        ?.events.filter((e) => e.allDay)
-                        .map((e) => (
-                          <SpecialChip key={e.sourceId} event={e} date={key} />
-                        ))}
-                    </div>
-                  )
-                })}
+              <div className="relative grid flex-1 auto-rows-[22px] grid-cols-7 gap-y-1 py-1.5">
+                {/* Líneas de las columnas */}
+                <div className="pointer-events-none absolute inset-0 grid grid-cols-7" aria-hidden>
+                  {keys.map((k) => (
+                    <div key={k} className="border-l" />
+                  ))}
+                </div>
+                {bars.map((b) => (
+                  <SpecialChip
+                    key={b.event.sourceId + b.event.start}
+                    event={b.event}
+                    date={keys[b.from]}
+                    continuesBefore={b.before}
+                    continuesAfter={b.after}
+                    className={cn('relative mx-1', b.before && 'ml-0', b.after && 'mr-0')}
+                    style={{ gridColumn: `${b.from + 1} / ${b.to + 2}`, gridRow: b.lane + 1 }}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -181,7 +192,7 @@ export function WeekView({
           >
             {dates.map((d, i) => {
               const key = toKey(d)
-              const events = (days.get(key)?.events ?? []).filter((e) => !e.allDay)
+              const events = (days.get(key)?.events ?? []).filter((e) => !isBanner(e))
               return (
                 <div
                   key={key}

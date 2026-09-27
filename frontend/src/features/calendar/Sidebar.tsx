@@ -1,5 +1,16 @@
 import { Fragment, useState } from 'react'
-import { Clock, ListChecks, ListRestart, MoreHorizontal, Pencil, Plus, Repeat, Trash2 } from 'lucide-react'
+import {
+  Clock,
+  ListChecks,
+  ListRestart,
+  ListTodo,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Repeat,
+  Trash2,
+  Workflow,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -70,7 +81,7 @@ export function MobileSidebar({
 }
 
 function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & { onAction?: () => void }) {
-  const { openEditor } = useCalendarActions()
+  const { openEditor, openGeneral } = useCalendarActions()
   const calendars = useCalendars()
   const toggle = useToggleCalendar()
   const [editing, setEditing] = useState<Calendar | 'new' | null>(null)
@@ -93,7 +104,7 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
       kind: 'event',
       recurrence: 'normal',
       label: 'Evento normal',
-      hint: 'Un día, con hora o todo el día',
+      hint: 'Con hora o todo el día; uno o varios días',
       icon: Clock,
     },
     {
@@ -137,6 +148,31 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
               </DropdownMenuItem>
             </Fragment>
           ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              onAction?.()
+              openGeneral(false)
+            }}
+          >
+            <ListTodo />
+            <span className="flex flex-col">
+              Tarea general
+              <span className="text-xs text-muted-foreground">Sin día fijo</span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              onAction?.()
+              openGeneral(true)
+            }}
+          >
+            <Workflow />
+            <span className="flex flex-col">
+              Proyecto
+              <span className="text-xs text-muted-foreground">Diagrama de actividades</span>
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

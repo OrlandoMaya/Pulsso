@@ -4,6 +4,7 @@ import { addDays, parseDate, toDateKey, toDateTimeString } from '../common/utils
 import { CompletionsService } from '../completions/completions.service';
 import { EventsService } from '../events/events.service';
 import { expandEvent, expandTask } from '../recurrence/recurrence';
+import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { TasksService } from '../tasks/tasks.service';
 
 const MAX_RANGE_DAYS = 62;
@@ -19,6 +20,8 @@ export interface AgendaTask {
   recurring: boolean;
   position: number;
   done: boolean;
+  /** Viene de un proyecto */
+  project: { id: string; title: string } | null;
 }
 
 export interface AgendaEvent {
@@ -34,6 +37,7 @@ export interface AgendaEvent {
   allDay: boolean;
   checkable: boolean;
   done: boolean;
+  project: { id: string; title: string } | null;
 }
 
 export interface AgendaDay {
@@ -50,6 +54,7 @@ export class AgendaService {
     private readonly events: EventsService,
     private readonly tasks: TasksService,
     private readonly completions: CompletionsService,
+    private readonly projects: GeneralTasksService,
   ) {}
 
   async range(userId: string, fromKey: string, toKey: string, calendarIds?: string[]) {
@@ -67,6 +72,14 @@ export class AgendaService {
       this.tasks.findCandidates(userId, to, ids),
       this.completions.doneByDate(userId, fromKey, toDateKey(to)),
     ]);
+
+    const projectTitles = await this.projects.titles(userId, [
+      ...new Set([...tasks, ...events].filter((x) => x.projectId).map((x) => String(x.projectId))),
+    ]);
+    const projectOf = (x: { projectId?: unknown }) => {
+      const title = x.projectId ? projectTitles.get(String(x.projectId)) : undefined;
+      return title !== undefined ? { id: String(x.projectId), title } : null;
+    };
 
     const days = new Map<string, AgendaDay>();
     for (let d = from; d < to; d = addDays(d, 1)) {
@@ -91,30 +104,33 @@ export class AgendaService {
           recurring: !/COUNT=1(;|$)/.test(task.rrule),
           position: task.position ?? 0,
           done: isDone(date, task.id),
+          project: projectOf(task),
         });
       }
     }
 
     for (const event of events) {
       for (const occ of expandEvent(event, from, to)) {
-        const startKey = toDateKey(occ.start);
-        // Un evento que empezó antes del rango se muestra en el primer día
-        const day = days.get(startKey) ?? days.get(fromKey)!;
-        day.events.push({
-          sourceType: 'event',
-          sourceId: event.id,
-          calendarId: String(event.calendarId),
-          color: colorOf.get(String(event.calendarId))!,
-          title: event.title,
-          notes: event.notes,
-          start: toDateTimeString(occ.start),
-          end: toDateTimeString(occ.end),
-          recurring: !!event.rrule,
-          allDay: !!event.allDay,
-          // Los eventos no se tachan: solo las tareas
-          checkable: false,
-          done: false,
-        });
+        // Un evento de varios días aparece en cada día que abarca (dentro del rango)
+        const lastMoment = new Date(occ.end.getTime() - 1);
+        for (let d = parseDate(toDateKey(occ.start)); d <= lastMoment; d = addDays(d, 1)) {
+          days.get(toDateKey(d))?.events.push({
+            sourceType: 'event',
+            sourceId: event.id,
+            calendarId: String(event.calendarId),
+            color: colorOf.get(String(event.calendarId))!,
+            title: event.title,
+            notes: event.notes,
+            start: toDateTimeString(occ.start),
+            end: toDateTimeString(occ.end),
+            recurring: !!event.rrule,
+            allDay: !!event.allDay,
+            // Los eventos no se tachan: solo las tareas
+            checkable: false,
+            done: false,
+            project: projectOf(event),
+          });
+        }
       }
     }
 

@@ -13,16 +13,27 @@ import { MobileSidebar, Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { WeekView } from './week/WeekView'
 import { DayView } from '../day/DayView'
+import { GeneralTaskDialog, type GeneralTarget } from '../projects/GeneralTaskDialog'
+import { PendientesView } from '../projects/PendientesView'
 
-export function CalendarPage({ view }: { view: View }) {
+/** `section="pendientes"`: en lugar del calendario, las tareas generales y los proyectos */
+export function CalendarPage({ view, section }: { view: View; section?: 'pendientes' }) {
   const nav = useCalendarNav(view)
   const { start, end } = visibleRange(view, nav.date)
   const agenda = useAgenda(toKey(start), toKey(end))
   const [editor, setEditor] = useState<EditorTarget | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [general, setGeneral] = useState<GeneralTarget | null>(null)
 
   const days = useMemo(() => new Map<string, AgendaDay>(agenda.data?.days.map((d) => [d.date, d])), [agenda.data])
-  const actions = useMemo<CalendarActions>(() => ({ openEditor: setEditor, openDay: nav.openDay }), [nav.openDay])
+  const actions = useMemo<CalendarActions>(
+    () => ({
+      openEditor: setEditor,
+      openDay: nav.openDay,
+      openGeneral: (isProject) => setGeneral({ mode: 'create', isProject }),
+    }),
+    [nav.openDay],
+  )
 
   const eventCount = agenda.data?.days.reduce((n, d) => n + d.events.length, 0)
   const subtitle = eventCount === undefined ? undefined : `${eventCount} ${eventCount === 1 ? 'evento' : 'eventos'}`
@@ -33,6 +44,7 @@ export function CalendarPage({ view }: { view: View }) {
         <Sidebar view={view} date={nav.date} agenda={agenda.data} onSelectDate={(d) => nav.go(view, d)} />
         <main className="flex min-w-0 flex-1 flex-col">
           <Toolbar
+            section={section}
             view={view}
             date={nav.date}
             subtitle={subtitle}
@@ -40,7 +52,9 @@ export function CalendarPage({ view }: { view: View }) {
             onShift={(dir) => nav.go(view, shiftDate(view, nav.date, dir))}
             onMenu={() => setMenuOpen(true)}
           />
-          {agenda.isError ? (
+          {section === 'pendientes' ? (
+            <PendientesView />
+          ) : agenda.isError ? (
             <div className="grid flex-1 place-items-center p-6">
               <div className="flex max-w-sm flex-col items-center gap-3 text-center">
                 <AlertCircle className="size-6 text-destructive" />
@@ -86,6 +100,7 @@ export function CalendarPage({ view }: { view: View }) {
         onShowDay={(d) => nav.go('dia', new Date(`${d}T12:00`))}
       />
       <EditorDialog target={editor} onClose={() => setEditor(null)} />
+      <GeneralTaskDialog target={general} onClose={() => setGeneral(null)} />
     </CalendarActionsContext.Provider>
   )
 }

@@ -1,9 +1,10 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
 import {
   IsBoolean,
   IsMongoId,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
   ValidateIf,
@@ -45,9 +46,20 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   allDay?: boolean;
+
+  /** Programar un elemento de un proyecto: queda vinculado a él */
+  @IsOptional()
+  @IsMongoId()
+  projectId?: string;
+
+  @ValidateIf((o) => o.projectId !== undefined)
+  @Matches(/^[A-Za-z0-9_-]{1,40}$/)
+  nodeId?: string;
 }
 
-export class UpdateEventDto extends PartialType(CreateEventDto) {}
+export class UpdateEventDto extends PartialType(
+  OmitType(CreateEventDto, ['projectId', 'nodeId']),
+) {}
 
 export class ExdateDto {
   @IsDateKey()

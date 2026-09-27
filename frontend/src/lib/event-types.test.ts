@@ -9,6 +9,7 @@ const ev: EventFormValues = {
   title: '  Demo  ',
   calendarId: 'c1',
   date: '2026-09-24',
+  endDate: '2026-09-24',
   allDay: false,
   startTime: '10:00',
   endTime: '11:30',
@@ -34,6 +35,18 @@ describe('eventos', () => {
       allDay: true,
       start: '2026-09-24T00:00',
       rrule: null,
+    })
+  })
+
+  it('varios días: todo el día (vacaciones) y con horario (viaje)', () => {
+    expect(toEventPayload({ ...ev, allDay: true, endDate: '2026-09-28' })).toMatchObject({
+      start: '2026-09-24T00:00',
+      end: '2026-09-28T00:00',
+      allDay: true,
+    })
+    expect(toEventPayload({ ...ev, startTime: '18:00', endDate: '2026-09-27', endTime: '12:00' })).toMatchObject({
+      start: '2026-09-24T18:00',
+      end: '2026-09-27T12:00',
     })
   })
 

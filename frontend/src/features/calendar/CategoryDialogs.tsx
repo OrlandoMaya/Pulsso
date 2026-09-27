@@ -123,6 +123,7 @@ export function DeleteCategoryDialog({
   const remove = useDeleteCalendar()
   const events = usage.data?.events ?? 0
   const tasks = usage.data?.tasks ?? 0
+  const generalTasks = usage.data?.generalTasks ?? 0
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
   return (
@@ -138,16 +139,20 @@ export function DeleteCategoryDialog({
                 <p className="flex items-center gap-2">
                   <Loader2 className="size-4 animate-spin" /> Revisando qué contiene…
                 </p>
-              ) : events + tasks > 0 ? (
+              ) : events + tasks + generalTasks > 0 ? (
                 <p>
                   Se eliminarán también{' '}
                   <strong className="text-foreground">
                     {[
                       events ? plural(events, 'evento', 'eventos') : '',
-                      tasks ? plural(tasks, 'tarea recurrente', 'tareas recurrentes') : '',
+                      tasks ? plural(tasks, 'tarea', 'tareas') : '',
+                      generalTasks
+                        ? plural(generalTasks, 'tarea general o proyecto', 'tareas generales o proyectos')
+                        : '',
                     ]
                       .filter(Boolean)
-                      .join(' y ')}
+                      .join(', ')
+                      .replace(/, ([^,]*)$/, ' y $1')}
                   </strong>
                   , con sus repeticiones y lo que hayas tachado. No se puede deshacer.
                 </p>

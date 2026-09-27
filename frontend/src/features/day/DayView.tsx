@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
 import { useCalendars, useCarryOverTasks } from '../calendar/queries'
 import { SpecialChip } from '../calendar/SpecialChip'
+import { isBanner } from '@/lib/multiday'
 import { QuickAddTask } from '../tasks/QuickAddTask'
 import { TaskList } from '../tasks/TaskList'
 import { ALL, useCategoryFilter } from './useCategoryFilter'
@@ -134,8 +135,8 @@ export function DayView({ date, agenda }: { date: Date; agenda?: AgendaDay }) {
 /** Eventos del día (las tareas están en la lista principal) */
 function DayEvents({ date, day }: { date: string; day?: AgendaDay }) {
   const { openEditor } = useCalendarActions()
-  const timed = day?.events.filter((e) => !e.allDay) ?? []
-  const allDay = day?.events.filter((e) => e.allDay) ?? []
+  const timed = day?.events.filter((e) => !isBanner(e)) ?? []
+  const allDay = day?.events.filter(isBanner) ?? []
 
   return (
     <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start" aria-label="Eventos del día">

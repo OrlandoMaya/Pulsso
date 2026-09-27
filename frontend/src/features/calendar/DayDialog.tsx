@@ -15,6 +15,7 @@ import { TaskList } from '../tasks/TaskList'
 import { useCalendarActions } from './editor-context'
 import { useDay } from './queries'
 import { SpecialChip } from './SpecialChip'
+import { isBanner } from '@/lib/multiday'
 
 interface Props {
   date: string | null
@@ -93,13 +94,11 @@ function DayContent({
       </header>
 
       <div className="flex flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4 sm:px-6 sm:pt-[18px]">
-        {data && data.events.some((e) => e.allDay) && (
+        {data && data.events.some(isBanner) && (
           <div className="flex flex-wrap gap-2">
-            {data.events
-              .filter((e) => e.allDay)
-              .map((e) => (
-                <SpecialChip key={e.sourceId} event={e} date={date} size="md" />
-              ))}
+            {data.events.filter(isBanner).map((e) => (
+              <SpecialChip key={e.sourceId} event={e} date={date} size="md" />
+            ))}
           </div>
         )}
 
@@ -122,11 +121,11 @@ function DayContent({
 
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Eventos</h3>
-          {data && !data.events.some((e) => !e.allDay) && (
+          {data && data.events.every(isBanner) && (
             <p className="text-sm text-muted-foreground">Sin eventos con hora.</p>
           )}
           {data &&
-            pairRows(data.events.filter((e) => !e.allDay)).map((row) => (
+            pairRows(data.events.filter((e) => !isBanner(e))).map((row) => (
               <div key={row[0].sourceId + row[0].start} className="flex gap-3">
                 <span className="w-11 shrink-0 pt-2.5 text-right font-mono text-xs text-muted-foreground">
                   {hhmm(row[0].start)}

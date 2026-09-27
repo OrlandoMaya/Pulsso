@@ -13,6 +13,7 @@ import { toJSONOptions } from '../../common/utils/serialize';
     transform: (doc: unknown, ret: Record<string, any>) => {
       toJSONOptions.transform(doc, ret);
       ret.calendarId = String(ret.calendarId);
+      ret.projectId = ret.projectId ? String(ret.projectId) : null;
       return ret;
     },
   },
@@ -45,6 +46,13 @@ export class Task {
 
   @Prop({ type: [String], default: [] })
   exdates: string[];
+
+  /** Si viene de un proyecto: el proyecto (tarea general) y el elemento del diagrama */
+  @Prop({ type: SchemaTypes.ObjectId, default: null, index: { sparse: true } })
+  projectId: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  nodeId: string | null;
 }
 
 export type TaskDocument = HydratedDocument<Task>;

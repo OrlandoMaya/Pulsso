@@ -11,6 +11,7 @@ import { CompletionsModule } from './completions/completions.module';
 import { DayItemsModule } from './day-items/day-items.module';
 import { validateEnv } from './config/env.validation';
 import { EventsModule } from './events/events.module';
+import { GeneralTasksModule } from './general-tasks/general-tasks.module';
 import { HealthController } from './health/health.controller';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     CompletionsModule,
     AgendaModule,
+    GeneralTasksModule,
     DayItemsModule,
   ],
   controllers: [HealthController],

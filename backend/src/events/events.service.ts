@@ -3,10 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CalendarsService } from '../calendars/calendars.service';
 import { parseDateTime, toDateTimeString as toLocal } from '../common/utils/date';
+import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { Completion } from '../completions/schemas/completion.schema';
 import { eventOccursOn } from '../recurrence/recurrence';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
 import { CalendarEvent, EventDocument } from './schemas/event.schema';
+
+const DAY_MS = 86_400_000;
+const MAX_DAYS = 366;
 
 @Injectable()
 export class EventsService {
@@ -14,6 +18,7 @@ export class EventsService {
     @InjectModel(CalendarEvent.name) private readonly events: Model<CalendarEvent>,
     @InjectModel(Completion.name) private readonly completions: Model<Completion>,
     private readonly calendars: CalendarsService,
+    private readonly projects: GeneralTasksService,
   ) {}
 
   async findOne(userId: string, id: string): Promise<EventDocument> {
@@ -38,8 +43,12 @@ export class EventsService {
     await this.calendars.findOne(userId, dto.calendarId);
     const allDay = dto.allDay ?? false;
     const { start, end } = this.parseRange(dto.start, dto.end, allDay);
+    const { projectId, nodeId, ...data } = dto;
+    const link =
+      projectId && nodeId ? await this.projects.prepareLink(userId, projectId, nodeId) : null;
     return this.events.create({
-      ...dto,
+      ...data,
+      ...link,
       userId: new Types.ObjectId(userId),
       calendarId: new Types.ObjectId(dto.calendarId),
       start,
@@ -94,14 +103,23 @@ export class EventsService {
   }
 
   private parseRange(startStr: string, endStr: string, allDay = false) {
+    let start: Date;
+    let end: Date;
     if (allDay) {
-      // Día completo: de las 00:00 de ese día a las 00:00 del siguiente
-      const start = parseDateTime(`${startStr.slice(0, 10)}T00:00`);
-      return { start, end: new Date(start.getTime() + 86_400_000) };
+      // Todo el día: de las 00:00 del primer día a las 00:00 del día siguiente al último
+      start = parseDateTime(`${startStr.slice(0, 10)}T00:00`);
+      const lastDay = parseDateTime(`${endStr.slice(0, 10)}T00:00`);
+      if (lastDay < start)
+        throw new BadRequestException('El último día debe ser igual o posterior al primero');
+      end = new Date(lastDay.getTime() + DAY_MS);
+    } else {
+      start = parseDateTime(startStr);
+      end = parseDateTime(endStr);
+      if (end <= start) throw new BadRequestException('El fin debe ser posterior al inicio');
     }
-    const start = parseDateTime(startStr);
-    const end = parseDateTime(endStr);
-    if (end <= start) throw new BadRequestException('La hora de fin debe ser posterior al inicio');
+    if (end.getTime() - start.getTime() > MAX_DAYS * DAY_MS) {
+      throw new BadRequestException(`Un evento puede durar como máximo ${MAX_DAYS} días`);
+    }
     return { start, end };
   }
 }
