@@ -336,6 +336,51 @@ describe('Pulsso API (e2e)', () => {
     await as(http.delete(`/api/calendars/${all[0].id}`)).expect(400);
   });
 
+  it('eventos de varios días aparecen en cada día', async () => {
+    const token = await register('i@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const cal = (await as(http.get('/api/calendars'))).body[3].id;
+    const trip = await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'Vacaciones',
+        start: '2026-09-21T00:00',
+        end: '2026-09-25T00:00',
+        allDay: true,
+      })
+      .expect(201);
+    expect(trip.body).toMatchObject({ start: '2026-09-21T00:00', end: '2026-09-26T00:00' });
+    await as(http.post('/api/events'))
+      .send({ calendarId: cal, title: 'Viaje', start: '2026-09-25T18:00', end: '2026-09-27T12:00' })
+      .expect(201);
+
+    const week = await as(
+      http.get('/api/agenda').query({ from: '2026-09-21', to: '2026-09-28' }),
+    ).expect(200);
+    const titles = week.body.days.map((d: { events: { title: string }[] }) =>
+      d.events.map((e) => e.title),
+    );
+    expect(titles).toEqual([
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones'],
+      ['Vacaciones', 'Viaje'],
+      ['Viaje'],
+      ['Viaje'],
+      [],
+    ]);
+    await as(http.post('/api/events'))
+      .send({
+        calendarId: cal,
+        title: 'x',
+        start: '2026-09-25T00:00',
+        end: '2026-09-21T00:00',
+        allDay: true,
+      })
+      .expect(400);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

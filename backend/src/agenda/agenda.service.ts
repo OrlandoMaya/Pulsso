@@ -97,24 +97,25 @@ export class AgendaService {
 
     for (const event of events) {
       for (const occ of expandEvent(event, from, to)) {
-        const startKey = toDateKey(occ.start);
-        // Un evento que empezó antes del rango se muestra en el primer día
-        const day = days.get(startKey) ?? days.get(fromKey)!;
-        day.events.push({
-          sourceType: 'event',
-          sourceId: event.id,
-          calendarId: String(event.calendarId),
-          color: colorOf.get(String(event.calendarId))!,
-          title: event.title,
-          notes: event.notes,
-          start: toDateTimeString(occ.start),
-          end: toDateTimeString(occ.end),
-          recurring: !!event.rrule,
-          allDay: !!event.allDay,
-          // Los eventos no se tachan: solo las tareas
-          checkable: false,
-          done: false,
-        });
+        // Un evento de varios días aparece en cada día que abarca (dentro del rango)
+        const lastMoment = new Date(occ.end.getTime() - 1);
+        for (let d = parseDate(toDateKey(occ.start)); d <= lastMoment; d = addDays(d, 1)) {
+          days.get(toDateKey(d))?.events.push({
+            sourceType: 'event',
+            sourceId: event.id,
+            calendarId: String(event.calendarId),
+            color: colorOf.get(String(event.calendarId))!,
+            title: event.title,
+            notes: event.notes,
+            start: toDateTimeString(occ.start),
+            end: toDateTimeString(occ.end),
+            recurring: !!event.rrule,
+            allDay: !!event.allDay,
+            // Los eventos no se tachan: solo las tareas
+            checkable: false,
+            done: false,
+          });
+        }
       }
     }
 

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../editor-context'
 import { ItemCheckbox } from '../ItemCheckbox'
 import { SpecialChip } from '../SpecialChip'
+import { isBanner, segmentOn } from '@/lib/multiday'
 
 const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const MAX_TASKS = 3
@@ -73,8 +74,9 @@ function DayCell({
   const key = toKey(date)
   const today = isToday(date)
   const tasks = day?.tasks ?? []
-  const specials = (day?.events ?? []).filter((e) => e.allDay)
-  const rows = pairRows((day?.events ?? []).filter((e) => !e.allDay))
+  const specials = (day?.events ?? []).filter(isBanner)
+  const rows = pairRows((day?.events ?? []).filter((e) => !isBanner(e)))
+  const monday = date.getDay() === 1
   const shownRows = rows.slice(0, MAX_ROWS)
   const hidden = Math.max(0, tasks.length - MAX_TASKS) + rows.slice(MAX_ROWS).reduce((n, r) => n + r.length, 0)
   const { done = 0, total = 0 } = day?.progress ?? {}
@@ -118,9 +120,21 @@ function DayCell({
         )}
       </div>
 
-      {specials.map((e) => (
-        <SpecialChip key={e.sourceId} event={e} date={key} className="max-sm:hidden" />
-      ))}
+      {specials.map((e) => {
+        // Varios días: barra continua entre celdas; el título al empezar y cada lunes
+        const { starts, ends } = segmentOn(e, key)
+        return (
+          <SpecialChip
+            key={e.sourceId + e.start}
+            event={e}
+            date={key}
+            continuesBefore={!starts}
+            continuesAfter={!ends}
+            hideTitle={!starts && !monday}
+            className={cn('max-sm:hidden', !starts && '-ml-[7px]', !ends && '-mr-[6px]')}
+          />
+        )
+      })}
 
       {/* En móvil: solo puntos; al tocar se abre el día */}
       {(tasks.length > 0 || (day?.events.length ?? 0) > 0) && (

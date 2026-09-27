@@ -111,14 +111,16 @@ pnpm format                                 # prettier
 - **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
   desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
 - **Cuatro cosas** (botón "Nuevo" y editor con dos selectores: *Evento / Tarea* y *Normal / Recurrente*):
-  - **Evento normal**: un día, con hora de inicio y fin o **todo el día** (feriado).
+  - **Evento normal**: con hora de inicio y fin o **todo el día** (feriado). Puede durar **varios días**: con *Todo el
+    día* eliges *Desde* / *Hasta* (vacaciones) y con horario eliges fecha y hora de inicio y de fin (un viaje del
+    viernes 18:00 al domingo 12:00). Máximo 366 días.
   - **Evento recurrente**: se repite (todos los días, de lunes a viernes, ciertos días, cada mes o cada año, con fin
     opcional), con horario o **todo el día** (cumpleaños = recurrente cada año, todo el día).
   - **Tarea normal**: algo por hacer un solo día; se tacha.
   - **Tarea recurrente**: se repite y se tacha cada vez.
 
-  Los eventos no se tachan; las tareas sí. Los eventos de todo el día van en la fila "Todo el día" de la semana y
-  arriba de cada día en el mes. Las tareas van en la franja "Tareas". El avance (hechas/total) cuenta solo tareas.
+  Los eventos no se tachan; las tareas sí. Los eventos de todo el día y los de varios días van como **barra** en la
+  fila "Todo el día" de la semana y arriba de cada día en el mes, continua de un día al otro. Las tareas van en la franja "Tareas". El avance (hechas/total) cuenta solo tareas.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
   avisa cuántos eventos y tareas se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.
@@ -162,7 +164,7 @@ dentro de `frontend/`.
 | `GET` `POST` | `/calendars` | Listar / crear `{ name, color, visible? }` |
 | `PATCH` `DELETE` | `/calendars/:id` | Editar / borrar (borra también sus eventos y tareas; no se puede borrar la última) |
 | `GET` | `/calendars/:id/usage` | `{ events, tasks }` que se perderían al borrarla |
-| `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable?, allDay? }` (`allDay`: día completo, solo usa la fecha de `start`) |
+| `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable?, allDay? }` (`allDay`: días completos de la fecha de `start` a la de `end`, ambos incluidos; se guarda hasta las 00:00 del día siguiente. Máx. 366 días) |
 | `GET` `PATCH` `DELETE` | `/events/:id` | Ver / editar (`rrule: null` quita la repetición) / borrar |
 | `POST` | `/events/:id/exdates` | `{ date }` borra solo esa ocurrencia |
 | `GET` `POST` | `/tasks` | Tareas `{ calendarId, title, description?, startDate, rrule }` (normal = `FREQ=DAILY;COUNT=1`) |
