@@ -132,7 +132,18 @@ export function DayView({ date, agenda }: { date: Date; agenda?: AgendaDay }) {
 
           <AddDayItem key={`${key}-${list}`} date={key} list={list} />
 
-          {current.isPending ? (
+          {current.isError ? (
+            <div
+              role="alert"
+              className="flex flex-col items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
+            >
+              <p className="text-sm font-medium text-destructive">No se pudo cargar la lista</p>
+              <p className="max-w-sm text-sm text-muted-foreground">{current.error.message}</p>
+              <Button variant="outline" size="sm" onClick={() => current.refetch()}>
+                Reintentar
+              </Button>
+            </div>
+          ) : current.isPending ? (
             <div className="flex flex-col gap-2">
               <Skeleton className="h-[76px] rounded-xl" />
               <Skeleton className="h-[76px] rounded-xl" />
