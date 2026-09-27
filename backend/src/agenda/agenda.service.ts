@@ -14,6 +14,10 @@ export interface AgendaTask {
   calendarId: string;
   color: string;
   title: string;
+  description: string;
+  /** false = tarea normal (solo ese día) */
+  recurring: boolean;
+  position: number;
   done: boolean;
 }
 
@@ -83,6 +87,9 @@ export class AgendaService {
           calendarId: String(task.calendarId),
           color: colorOf.get(String(task.calendarId))!,
           title: task.title,
+          description: task.description ?? '',
+          recurring: !/COUNT=1(;|$)/.test(task.rrule),
+          position: task.position ?? 0,
           done: isDone(date, task.id),
         });
       }
@@ -104,14 +111,15 @@ export class AgendaService {
           end: toDateTimeString(occ.end),
           recurring: !!event.rrule,
           allDay: !!event.allDay,
-          checkable: event.checkable,
-          done: event.checkable && isDone(startKey, event.id),
+          // Los eventos no se tachan: solo las tareas
+          checkable: false,
+          done: false,
         });
       }
     }
 
     for (const day of days.values()) {
-      day.tasks.sort((a, b) => a.title.localeCompare(b.title, 'es'));
+      day.tasks.sort((a, b) => a.position - b.position || a.title.localeCompare(b.title, 'es'));
       // Primero los de día completo, luego por hora
       day.events.sort(
         (a, b) =>
@@ -119,8 +127,8 @@ export class AgendaService {
           a.start.localeCompare(b.start) ||
           a.end.localeCompare(b.end),
       );
-      const checkables = [...day.tasks, ...day.events.filter((e) => e.checkable)];
-      day.progress = { done: checkables.filter((c) => c.done).length, total: checkables.length };
+      // El avance del día cuenta solo tareas
+      day.progress = { done: day.tasks.filter((t) => t.done).length, total: day.tasks.length };
     }
 
     return { from: fromKey, to: toKey, days: [...days.values()] };

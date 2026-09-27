@@ -74,7 +74,7 @@ export function CalendarPage({ view }: { view: View }) {
         size="icon"
         aria-label="Nuevo evento"
         className="fixed right-5 bottom-5 z-40 size-12 rounded-full shadow-lg lg:hidden"
-        onClick={() => setEditor({ mode: 'create', type: 'normal', date: toKey(new Date()) })}
+        onClick={() => setEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date: toKey(new Date()) })}
       >
         <Plus className="size-5" />
       </Button>

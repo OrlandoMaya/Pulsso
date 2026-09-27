@@ -104,7 +104,7 @@ describe('Pulsso API (e2e)', () => {
         rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
       })
       .expect(201);
-    expect(gym.body).toMatchObject({ start: '2026-09-01T07:30', checkable: true });
+    expect(gym.body).toMatchObject({ start: '2026-09-01T07:30', checkable: false });
     await asA(http.post('/api/events'))
       .send({
         calendarId: trabajo,
@@ -121,22 +121,24 @@ describe('Pulsso API (e2e)', () => {
       'Gimnasio',
       'Revisión de diseño',
     ]);
-    expect(day.body.progress).toEqual({ done: 0, total: 2 });
+    // El avance cuenta solo tareas, no eventos
+    expect(day.body.progress).toEqual({ done: 0, total: 1 });
 
     // Tachar
     await asA(http.put('/api/completions'))
       .send({ sourceType: 'task', sourceId: task.body.id, date: '2026-09-25', done: true })
       .expect(200);
+    // Los eventos no se tachan
     await asA(http.put('/api/completions'))
       .send({ sourceType: 'event', sourceId: gym.body.id, date: '2026-09-25', done: true })
-      .expect(200);
+      .expect(400);
     const after = await asA(http.get('/api/agenda/day/2026-09-25')).expect(200);
-    expect(after.body.progress).toEqual({ done: 2, total: 2 });
+    expect(after.body.progress).toEqual({ done: 1, total: 1 });
     expect(after.body.tasks[0].done).toBe(true);
 
     // Otro día no queda tachado
     const other = await asA(http.get('/api/agenda/day/2026-09-23')).expect(200);
-    expect(other.body.progress).toEqual({ done: 0, total: 2 });
+    expect(other.body.progress).toEqual({ done: 0, total: 1 });
 
     // No se puede tachar un día en que no ocurre
     await asA(http.put('/api/completions'))
@@ -172,76 +174,109 @@ describe('Pulsso API (e2e)', () => {
     expect(dayB.body).toMatchObject({ tasks: [], events: [], progress: { done: 0, total: 0 } });
   });
 
-  it('lista del día: personal y trabajo separados, orden, mover y pasar pendientes', async () => {
+  it('tareas: descripción, orden y pasar pendientes a mañana', async () => {
     const token = await register('d@pulsso.dev');
     const other = await register('e@pulsso.dev');
     const as = (r: request.Test, t = token) => r.auth(t, { type: 'bearer' });
-    const add = (title: string, list = 'work', description = '') =>
-      as(http.post('/api/day-items'))
-        .send({ date: '2026-09-26', list, title, description })
+    const cals = (await as(http.get('/api/calendars'))).body as { id: string; name: string }[];
+    const work = cals.find((c) => c.name === 'Trabajo')!.id;
+    const add = (title: string, rrule = 'FREQ=DAILY;COUNT=1', description = '') =>
+      as(http.post('/api/tasks'))
+        .send({ calendarId: work, title, description, startDate: '2026-09-26', rrule })
         .expect(201)
         .then((r) => r.body);
 
-    const a = await add('Revisar PRs', 'work', 'Los del sprint 12');
+    const a = await add('Revisar PRs', undefined, 'Los del sprint 12');
     const b = await add('Preparar demo');
-    const c = await add('Llamar a mamá', 'personal');
-    expect(a).toMatchObject({ position: 0, done: false, description: 'Los del sprint 12' });
+    const daily = await add('Meditar', 'FREQ=DAILY');
+    expect(a).toMatchObject({ description: 'Los del sprint 12', position: 0 });
     expect(b.position).toBe(1);
 
-    const work = await as(
-      http.get('/api/day-items').query({ date: '2026-09-26', list: 'work' }),
-    ).expect(200);
-    expect(work.body.map((i: { title: string }) => i.title)).toEqual([
+    const day = await as(http.get('/api/agenda/day/2026-09-26')).expect(200);
+    expect(day.body.tasks.map((t: { title: string }) => t.title)).toEqual([
       'Revisar PRs',
       'Preparar demo',
+      'Meditar',
     ]);
-    const personal = await as(
-      http.get('/api/day-items').query({ date: '2026-09-26', list: 'personal' }),
-    ).expect(200);
-    expect(personal.body.map((i: { id: string }) => i.id)).toEqual([c.id]);
+    expect(day.body.tasks[0]).toMatchObject({ description: 'Los del sprint 12', recurring: false });
+    expect(day.body.tasks[2].recurring).toBe(true);
 
     // Reordenar
-    const reordered = await as(http.put('/api/day-items/order'))
-      .send({ date: '2026-09-26', list: 'work', ids: [b.id, a.id] })
+    await as(http.put('/api/tasks/order'))
+      .send({ ids: [daily.id, b.id, a.id] })
       .expect(200);
-    expect(reordered.body.map((i: { title: string }) => i.title)).toEqual([
+    const reordered = await as(http.get('/api/agenda/day/2026-09-26')).expect(200);
+    expect(reordered.body.tasks.map((t: { title: string }) => t.title)).toEqual([
+      'Meditar',
       'Preparar demo',
       'Revisar PRs',
     ]);
-    await as(http.put('/api/day-items/order'))
-      .send({ date: '2026-09-26', list: 'work', ids: [b.id] })
-      .expect(400);
+    await as(http.put('/api/tasks/order'), other)
+      .send({ ids: [a.id] })
+      .expect(404);
 
-    // Tachar y editar
-    await as(http.patch(`/api/day-items/${b.id}`))
-      .send({ done: true, description: 'Listo' })
+    // Tachar una y pasar pendientes: solo la normal no hecha se mueve; la recurrente no
+    await as(http.put('/api/completions'))
+      .send({ sourceType: 'task', sourceId: b.id, date: '2026-09-26', done: true })
       .expect(200);
-
-    // Pasar pendientes a mañana: solo "Revisar PRs"
-    const moved = await as(http.post('/api/day-items/carry-over'))
-      .send({ from: '2026-09-26', to: '2026-09-27', list: 'work' })
+    const moved = await as(http.post('/api/tasks/carry-over'))
+      .send({ from: '2026-09-26', to: '2026-09-27' })
       .expect(200);
     expect(moved.body).toEqual({ moved: 1 });
-    const tomorrow = await as(
-      http.get('/api/day-items').query({ date: '2026-09-27', list: 'work' }),
-    ).expect(200);
-    expect(tomorrow.body.map((i: { title: string }) => i.title)).toEqual(['Revisar PRs']);
+    const tomorrow = await as(http.get('/api/agenda/day/2026-09-27')).expect(200);
+    expect(tomorrow.body.tasks.map((t: { title: string }) => t.title).sort()).toEqual([
+      'Meditar',
+      'Revisar PRs',
+    ]);
 
-    // Otra persona no ve ni toca nada
-    const foreign = await as(
-      http.get('/api/day-items').query({ date: '2026-09-26', list: 'work' }),
-      other,
-    ).expect(200);
-    expect(foreign.body).toEqual([]);
-    await as(http.patch(`/api/day-items/${a.id}`), other)
-      .send({ title: 'x' })
-      .expect(404);
-    await as(http.delete(`/api/day-items/${a.id}`), other).expect(404);
+    // Otra persona no ve nada
+    const foreign = await as(http.get('/api/agenda/day/2026-09-26'), other).expect(200);
+    expect(foreign.body.tasks).toEqual([]);
+  });
 
-    await as(http.delete(`/api/day-items/${c.id}`)).expect(204);
-    await as(http.post('/api/day-items'))
-      .send({ date: '2026-09-26', list: 'otra', title: 'x' })
-      .expect(400);
+  it('migra los antiguos objetivos del día a tareas', async () => {
+    const token = await register('h@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const me = (await as(http.get('/api/auth/me'))).body;
+    const conn = app.get<Connection>(getConnectionToken());
+    const { Types } = await import('mongoose');
+    await conn.collection('day_items').insertMany([
+      {
+        userId: new Types.ObjectId(me.id),
+        date: '2026-09-26',
+        list: 'work',
+        title: 'Objetivo',
+        description: 'Detalle',
+        done: true,
+        position: 0,
+      },
+      {
+        userId: new Types.ObjectId(me.id),
+        date: '2026-09-26',
+        list: 'personal',
+        title: 'Llamar a mamá',
+        description: '',
+        done: false,
+        position: 0,
+      },
+    ]);
+    const { DayItemsMigration } = await import('../src/day-items/day-items.migration');
+    expect(await app.get(DayItemsMigration).run()).toBe(2);
+    expect(await conn.collection('day_items').countDocuments()).toBe(0);
+
+    const day = await as(http.get('/api/agenda/day/2026-09-26')).expect(200);
+    const cals = (await as(http.get('/api/calendars'))).body as { id: string; name: string }[];
+    const byTitle = Object.fromEntries(day.body.tasks.map((t: { title: string }) => [t.title, t]));
+    expect(byTitle['Objetivo']).toMatchObject({
+      description: 'Detalle',
+      done: true,
+      recurring: false,
+      calendarId: cals.find((c) => c.name === 'Trabajo')!.id,
+    });
+    expect(byTitle['Llamar a mamá']).toMatchObject({
+      done: false,
+      calendarId: cals.find((c) => c.name === 'Personal')!.id,
+    });
   });
 
   it('evento especial de día completo, anual', async () => {

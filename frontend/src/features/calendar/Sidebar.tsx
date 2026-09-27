@@ -1,8 +1,14 @@
-import { useState } from 'react'
-import { Clock, MoreHorizontal, Pencil, Plus, Repeat, Sparkles, Trash2 } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { Clock, ListChecks, ListRestart, MoreHorizontal, Pencil, Plus, Repeat, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { LogOut } from 'lucide-react'
@@ -13,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { toKey, type View } from '@/lib/dates'
 import type { AgendaRange, Calendar } from '@/lib/types'
-import type { EventType } from '@/lib/event-types'
+import type { Kind, Recurrence } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 import { Logo } from './Logo'
@@ -77,10 +83,35 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
   const pct = totals?.total ? Math.round((totals.done * 100) / totals.total) : 0
   const today = toKey(new Date())
 
-  const create = (type: EventType) => {
+  const create = (kind: Kind, recurrence: Recurrence) => {
     onAction?.()
-    openEditor({ mode: 'create', type, date: today })
+    openEditor({ mode: 'create', kind, recurrence, date: today })
   }
+
+  const items: { kind: Kind; recurrence: Recurrence; label: string; hint: string; icon: typeof Clock }[] = [
+    {
+      kind: 'event',
+      recurrence: 'normal',
+      label: 'Evento normal',
+      hint: 'Un día, con hora o todo el día',
+      icon: Clock,
+    },
+    {
+      kind: 'event',
+      recurrence: 'recurring',
+      label: 'Evento recurrente',
+      hint: 'Se repite: diario, lun–vie, cada año…',
+      icon: Repeat,
+    },
+    { kind: 'task', recurrence: 'normal', label: 'Tarea normal', hint: 'Por hacer un día; se tacha', icon: ListChecks },
+    {
+      kind: 'task',
+      recurrence: 'recurring',
+      label: 'Tarea recurrente',
+      hint: 'Se repite y se tacha cada vez',
+      icon: ListRestart,
+    },
+  ]
 
   return (
     <>
@@ -94,27 +125,18 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px]">
-          <DropdownMenuItem onSelect={() => create('normal')}>
-            <Clock />
-            <span className="flex flex-col">
-              Evento normal
-              <span className="text-xs text-muted-foreground">Con hora de inicio y fin</span>
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => create('recurring')}>
-            <Repeat />
-            <span className="flex flex-col">
-              Evento recurrente
-              <span className="text-xs text-muted-foreground">Se repite: diario, lun–vie…</span>
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => create('special')}>
-            <Sparkles />
-            <span className="flex flex-col">
-              Evento especial
-              <span className="text-xs text-muted-foreground">Todo el día: cumpleaños, feriado</span>
-            </span>
-          </DropdownMenuItem>
+          {items.map(({ kind, recurrence, label, hint, icon: Icon }, i) => (
+            <Fragment key={label}>
+              {i === 2 && <DropdownMenuSeparator />}
+              <DropdownMenuItem onSelect={() => create(kind, recurrence)}>
+                <Icon />
+                <span className="flex flex-col">
+                  {label}
+                  <span className="text-xs text-muted-foreground">{hint}</span>
+                </span>
+              </DropdownMenuItem>
+            </Fragment>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -123,14 +145,14 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
       <div className="flex flex-col gap-2.5 rounded-xl border bg-card px-4 py-3.5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">
-            Recurrentes {view === 'dia' ? 'del día' : view === 'semana' ? 'esta semana' : 'este mes'}
+            Tareas {view === 'dia' ? 'del día' : view === 'semana' ? 'de la semana' : 'del mes'}
           </span>
           <span className="font-mono text-[13px] text-muted-foreground">
             {totals ? `${totals.done}/${totals.total}` : '–'}
           </span>
         </div>
         <Progress value={pct} indicatorClassName={cn(pct === 100 && 'bg-emerald-600 dark:bg-emerald-500')} />
-        <p className="text-xs text-muted-foreground">Marca la casilla para tachar una tarea o evento recurrente.</p>
+        <p className="text-xs text-muted-foreground">Marca la casilla para tachar una tarea.</p>
       </div>
 
       <div className="flex flex-col gap-1">

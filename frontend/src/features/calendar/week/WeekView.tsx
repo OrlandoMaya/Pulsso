@@ -36,7 +36,7 @@ export function WeekView({
   const hasSpecial = dates.some((d) => days.get(toKey(d))?.events.some((e) => e.allDay))
 
   // Al abrir, baja hasta las 7:00 (o una hora antes de ahora si es más temprano).
-  // Se repite cuando aparece la franja "Diario" porque cambia la altura de la cabecera.
+  // Se repite cuando aparece la franja de tareas porque cambia la altura de la cabecera.
   const weekKey = toKey(start)
   useEffect(() => {
     const hour = Math.max(0, Math.min(7, new Date().getHours() - 1))
@@ -56,7 +56,7 @@ export function WeekView({
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
     const minutes = Math.floor((y / HOUR) * 2) * 30
     const time = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${minutes % 60 ? '30' : '00'}`
-    openEditor({ mode: 'create', type: 'normal', date: toKey(date), time })
+    openEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date: toKey(date), time })
   }
 
   return (
@@ -101,12 +101,14 @@ export function WeekView({
             </div>
           </div>
 
-          {/* Eventos especiales de día completo */}
+          {/* Eventos de todo el día */}
           {hasSpecial && (
             <div className="flex border-b">
               <div className="sticky left-0 z-10 flex w-16 shrink-0 flex-col items-end gap-1 bg-background pt-2 pr-2 text-muted-foreground">
                 <Sparkles className="size-3.5" />
-                <span className="text-[10px] font-medium tracking-wide uppercase">Especial</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase leading-tight text-right">
+                  Todo el día
+                </span>
               </div>
               <div className="grid flex-1 grid-cols-7">
                 {dates.map((d) => {
@@ -131,7 +133,7 @@ export function WeekView({
             <div className="flex border-b bg-sidebar">
               <div className="sticky left-0 z-10 flex w-16 shrink-0 flex-col items-end gap-1 bg-sidebar pt-2.5 pr-2 text-muted-foreground">
                 <Repeat className="size-3.5" />
-                <span className="text-[10px] font-medium tracking-wide uppercase">Diario</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase">Tareas</span>
               </div>
               <div className="grid flex-1 grid-cols-7">
                 {dates.map((d) => {
@@ -236,7 +238,6 @@ function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: st
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      {event.checkable && <ItemCheckbox item={event} date={date} className={cn('size-3.5', !compact && 'mt-px')} />}
       <button
         type="button"
         title={`${event.title} · ${range}`}

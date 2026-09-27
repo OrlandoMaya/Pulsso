@@ -4,7 +4,7 @@ import type { AgendaEvent } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 
-/** Evento especial de día completo (cumpleaños, feriado…) */
+/** Evento de todo el día (cumpleaños, feriado…) */
 export function SpecialChip({
   event,
   date,
@@ -34,7 +34,7 @@ export function SpecialChip({
         className,
       )}
     >
-      <Sparkles className={cn('shrink-0', size === 'sm' ? 'size-3' : 'size-4')} aria-label="Evento especial" />
+      <Sparkles className={cn('shrink-0', size === 'sm' ? 'size-3' : 'size-4')} aria-label="Todo el día" />
       <span className="truncate">{event.title}</span>
     </button>
   )

@@ -32,9 +32,11 @@ export interface Task {
   id: string
   calendarId: string
   title: string
+  description?: string
   startDate: string
   rrule: string
   exdates: string[]
+  position?: number
 }
 
 export interface AgendaTask {
@@ -43,6 +45,10 @@ export interface AgendaTask {
   calendarId: string
   color: CalendarColor
   title: string
+  description: string
+  /** false = tarea normal (solo ese día) */
+  recurring: boolean
+  position: number
   done: boolean
 }
 
@@ -66,18 +72,6 @@ export interface AgendaDay {
   progress: { done: number; total: number }
   tasks: AgendaTask[]
   events: AgendaEvent[]
-}
-
-export type DayList = 'personal' | 'work'
-
-export interface DayItem {
-  id: string
-  date: string
-  list: DayList
-  title: string
-  description: string
-  done: boolean
-  position: number
 }
 
 export interface AgendaRange {

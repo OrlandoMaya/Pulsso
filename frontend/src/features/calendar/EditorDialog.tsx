@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Clock, Loader2, Repeat, Sparkles, Trash2 } from 'lucide-react'
+import { CalendarDays, ListChecks, Loader2, Repeat, Trash2, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,8 +23,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { COLORS } from '@/lib/colors'
 import { fromKey } from '@/lib/dates'
-import { toPayload, typeOf, type EventFormValues, type EventType } from '@/lib/event-types'
-import { parseRRule, WEEKDAYS, weekdayOf, type RepeatKind } from '@/lib/recurrence'
+import {
+  repeatValuesOf,
+  toEventPayload,
+  toTaskPayload,
+  type Kind,
+  type Recurrence,
+  type RepeatRule,
+} from '@/lib/event-types'
+import { WEEKDAYS, weekdayOf } from '@/lib/recurrence'
 import type { CalendarEvent, Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import type { EditorTarget } from './editor-context'
@@ -32,50 +39,51 @@ import { useCalendars, useDeleteItem, useEvent, useSaveEvent, useSaveTask, useTa
 
 const schema = z
   .object({
-    type: z.enum(['normal', 'recurring', 'special']),
-    timed: z.boolean(),
+    kind: z.enum(['event', 'task']),
+    recurrence: z.enum(['normal', 'recurring']),
     title: z.string().trim().min(1, 'Escribe un título').max(120),
     calendarId: z.string().min(1, 'Elige una categoría'),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    allDay: z.boolean(),
     startTime: z.string(),
     endTime: z.string(),
-    repeat: z.enum(['none', 'daily', 'weekdays', 'weekly', 'monthly', 'yearly']),
+    repeat: z.enum(['daily', 'weekdays', 'weekly', 'monthly', 'yearly']),
     days: z.array(z.string()),
     until: z.string().optional(),
-    checkable: z.boolean(),
-    yearly: z.boolean(),
     notes: z.string().max(2000).optional(),
+    description: z.string().max(5000).optional(),
   })
-  .refine((v) => !hasHours(v) || v.endTime > v.startTime, {
+  .refine((v) => v.kind === 'task' || v.allDay || v.endTime > v.startTime, {
     path: ['endTime'],
     message: 'La hora de fin debe ser posterior al inicio',
   })
-  .refine((v) => v.type !== 'recurring' || v.repeat !== 'none', {
-    path: ['repeat'],
-    message: 'Elige cada cuánto se repite',
-  })
-  .refine((v) => v.type !== 'recurring' || !v.until || v.until >= v.date, {
+  .refine((v) => v.recurrence === 'normal' || !v.until || v.until >= v.date, {
     path: ['until'],
     message: 'Debe ser igual o posterior a la fecha de inicio',
   })
 
-type FormValues = z.infer<typeof schema> & EventFormValues
+type FormValues = z.infer<typeof schema>
 
-const hasHours = (v: { type: EventType; timed: boolean }) => v.type === 'normal' || (v.type === 'recurring' && v.timed)
-
-const TYPES: { value: EventType; label: string; hint: string; icon: typeof Clock }[] = [
-  { value: 'normal', label: 'Normal', hint: 'Con hora de inicio y fin', icon: Clock },
-  { value: 'recurring', label: 'Recurrente', hint: 'Se repite: diario, lun–vie…', icon: Repeat },
-  { value: 'special', label: 'Especial', hint: 'Todo el día: cumpleaños, feriado', icon: Sparkles },
+const KINDS: { value: Kind; label: string; hint: string; icon: typeof CalendarDays }[] = [
+  { value: 'event', label: 'Evento', hint: 'Ocurre en el calendario', icon: CalendarDays },
+  { value: 'task', label: 'Tarea', hint: 'Algo por hacer que se tacha', icon: ListChecks },
 ]
 
-const REPEAT_LABELS: Partial<Record<RepeatKind, string>> = {
+const RECURRENCES: { value: Recurrence; label: string; icon: typeof Repeat }[] = [
+  { value: 'normal', label: 'Normal', icon: CircleDot },
+  { value: 'recurring', label: 'Recurrente', icon: Repeat },
+]
+
+const REPEAT_LABELS: Record<RepeatRule, string> = {
   daily: 'Todos los días',
   weekdays: 'De lunes a viernes',
   weekly: 'Ciertos días de la semana',
   monthly: 'Cada mes (mismo día)',
   yearly: 'Cada año (misma fecha)',
 }
+
+const titleFor = (kind: Kind, recurrence: Recurrence) =>
+  `${kind === 'event' ? 'Evento' : 'Tarea'} ${recurrence === 'recurring' ? 'recurrente' : 'normal'}`
 
 export function EditorDialog({ target, onClose }: { target: EditorTarget | null; onClose: () => void }) {
   return (
@@ -92,7 +100,7 @@ function EditorLoader({ target, onClose }: { target: EditorTarget; onClose: () =
   const editing = target.mode === 'edit'
   const event = useEvent(editing && target.kind === 'event' ? target.id : undefined)
   const task = useTask(editing && target.kind === 'task' ? target.id : undefined)
-  const source = editing && target.kind === 'task' ? task : event
+  const source = target.kind === 'task' ? task : event
 
   if (editing && source.isPending) {
     return (
@@ -119,61 +127,51 @@ function endAfter(time: string) {
 }
 
 function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): FormValues {
-  const common = { until: '', notes: '', yearly: false }
   if (event) {
-    const start = fromKey(event.start)
-    const { type } = typeOf(event)
-    const repeat = parseRRule(event.rrule, start)
+    const date = event.start.slice(0, 10)
     return {
-      ...common,
-      type,
-      timed: true,
+      kind: 'event',
+      ...repeatValuesOf(event.rrule, date),
       title: event.title,
       calendarId: event.calendarId,
-      date: event.start.slice(0, 10),
+      date,
+      allDay: event.allDay,
       startTime: event.allDay ? '09:00' : event.start.slice(11, 16),
       endTime: event.allDay ? '10:00' : event.end.slice(11, 16),
-      repeat: type === 'recurring' ? repeat.kind : 'daily',
-      days: repeat.days,
-      until: repeat.until ?? '',
-      checkable: event.checkable,
-      yearly: event.allDay && !!event.rrule,
       notes: event.notes ?? '',
+      description: '',
     }
   }
   if (task) {
-    const start = fromKey(task.startDate)
-    const repeat = parseRRule(task.rrule, start)
     return {
-      ...common,
-      type: 'recurring',
-      timed: false,
+      kind: 'task',
+      ...repeatValuesOf(task.rrule, task.startDate),
       title: task.title,
       calendarId: task.calendarId,
       date: task.startDate,
+      allDay: false,
       startTime: '09:00',
       endTime: '10:00',
-      // Una tarea "solo hoy" (COUNT=1) se muestra como diaria para poder cambiarla
-      repeat: repeat.kind === 'none' ? 'daily' : repeat.kind,
-      days: repeat.days,
-      until: repeat.until ?? '',
-      checkable: true,
+      notes: '',
+      description: task.description ?? '',
     }
   }
   const t = target.mode === 'create' ? target : null
   const time = t?.time ?? '09:00'
   return {
-    ...common,
-    type: t?.type ?? 'normal',
-    timed: t?.timed ?? true,
+    kind: t?.kind ?? 'event',
+    recurrence: t?.recurrence ?? 'normal',
+    repeat: 'daily',
+    days: [weekdayOf(fromKey(target.date))],
+    until: '',
     title: '',
     calendarId: '',
     date: target.date,
+    allDay: t?.allDay ?? false,
     startTime: time,
     endTime: endAfter(time),
-    repeat: 'daily',
-    days: [weekdayOf(fromKey(target.date))],
-    checkable: t?.type === 'recurring',
+    notes: '',
+    description: '',
   }
 }
 
@@ -193,15 +191,15 @@ function EditorForm({
   const saveTask = useSaveTask()
   const remove = useDeleteItem()
   const editing = target.mode === 'edit'
-  const editingTask = editing && target.kind === 'task'
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: useMemo(() => defaults(target, event, task), [target, event, task]),
   })
   const { register, control, handleSubmit, setValue, formState } = form
-  const type = useWatch({ control, name: 'type' })
-  const timed = useWatch({ control, name: 'timed' })
+  const kind = useWatch({ control, name: 'kind' })
+  const recurrence = useWatch({ control, name: 'recurrence' })
+  const allDay = useWatch({ control, name: 'allDay' })
   const repeat = useWatch({ control, name: 'repeat' })
   const date = useWatch({ control, name: 'date' })
   const calendarId = useWatch({ control, name: 'calendarId' })
@@ -213,79 +211,77 @@ function EditorForm({
     }
   }, [calendarId, calendars.data, setValue])
 
+  const isEvent = kind === 'event'
+  const isRecurring = recurrence === 'recurring'
   const pending = saveEvent.isPending || saveTask.isPending
-  const withHours = hasHours({ type, timed })
-
-  const pickType = (next: EventType) => {
-    setValue('type', next)
-    // Recurrente: casilla para tachar activada por defecto
-    setValue('checkable', next === 'recurring')
-  }
 
   const onSubmit = handleSubmit(async (v) => {
-    const payload = toPayload(v)
     const id = editing ? target.id : undefined
-    if (payload.kind === 'task') await saveTask.mutateAsync({ id, data: payload.data })
-    else await saveEvent.mutateAsync({ id, data: payload.data })
+    if (v.kind === 'task') await saveTask.mutateAsync({ id, data: toTaskPayload(v) })
+    else await saveEvent.mutateAsync({ id, data: toEventPayload(v) })
     onClose()
   })
 
   const del = async (onlyThisDay: boolean) => {
-    if (!editing) return
+    if (target.mode !== 'edit') return
     await remove.mutateAsync({ kind: target.kind, id: target.id, date: onlyThisDay ? target.date : undefined })
     onClose()
   }
 
   const occurrenceLabel = editing ? format(fromKey(target.date), "EEEE d 'de' LLLL", { locale: es }) : ''
-  const seriesRecurring = editing && (event ? !!event.rrule : task ? !/COUNT=1(;|$)/.test(task.rrule) : false)
-  const noun = type === 'special' ? 'día especial' : type === 'recurring' ? 'evento recurrente' : 'evento'
+  const savedRecurring = editing && repeatValuesOf(event?.rrule ?? task?.rrule ?? null, date).recurrence === 'recurring'
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <DialogHeader>
-        <DialogTitle>{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</DialogTitle>
+        <DialogTitle>
+          {editing ? 'Editar' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
+        </DialogTitle>
         <DialogDescription>
-          {seriesRecurring
+          {savedRecurring
             ? 'Los cambios se aplican a todas las repeticiones.'
-            : TYPES.find((t) => t.value === type)?.hint}
+            : isEvent
+              ? 'Ocurre en el calendario; no se tacha.'
+              : 'Algo por hacer que tachas al terminar.'}
         </DialogDescription>
       </DialogHeader>
 
-      {/* Tipo de evento */}
-      <div role="radiogroup" aria-label="Tipo de evento" className="grid grid-cols-3 gap-2">
-        {TYPES.map(({ value, label, icon: Icon }) => {
-          const active = type === value
-          const disabled = editingTask && value !== 'recurring'
-          return (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              disabled={disabled}
-              onClick={() => pickType(value)}
-              className={cn(
-                'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40',
-                active && 'border-primary bg-accent ring-1 ring-primary',
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          )
-        })}
+      <div className="flex flex-col gap-2">
+        {/* Evento o tarea (fijo al editar) */}
+        {!editing && (
+          <Segmented
+            label="Qué es"
+            value={kind}
+            onChange={(v) => setValue('kind', v as Kind)}
+            options={KINDS.map((k) => ({ value: k.value, label: k.label, hint: k.hint, icon: k.icon }))}
+          />
+        )}
+        {/* Normal o recurrente */}
+        <Segmented
+          label="Se repite"
+          value={recurrence}
+          onChange={(v) => setValue('recurrence', v as Recurrence)}
+          options={RECURRENCES.map((r) => ({
+            value: r.value,
+            label: r.label,
+            hint: r.value === 'normal' ? 'Solo un día' : 'Se repite',
+            icon: r.icon,
+          }))}
+        />
       </div>
 
-      <Field label="Título" htmlFor="title" error={formState.errors.title?.message}>
+      <Field label={isEvent ? 'Título' : '¿Qué hay que hacer?'} htmlFor="title" error={formState.errors.title?.message}>
         <Input
           id="title"
           autoFocus
           placeholder={
-            type === 'special'
-              ? 'Ej. Cumpleaños de mamá'
-              : type === 'recurring'
-                ? 'Ej. Daily standup'
-                : 'Ej. Reunión con cliente'
+            isEvent
+              ? isRecurring
+                ? 'Ej. Daily standup, Cumpleaños de mamá'
+                : 'Ej. Reunión con cliente, Feriado'
+              : isRecurring
+                ? 'Ej. Meditar 10 min'
+                : 'Ej. Pagar la luz'
           }
           {...register('title')}
         />
@@ -313,64 +309,52 @@ function EditorForm({
             )}
           />
         </Field>
-        <Field
-          label={type === 'recurring' ? 'Empieza el' : 'Fecha'}
-          htmlFor="date"
-          error={formState.errors.date?.message}
-        >
+        <Field label={isRecurring ? 'Empieza el' : 'Día'} htmlFor="date" error={formState.errors.date?.message}>
           <Input id="date" type="date" {...register('date')} />
         </Field>
       </div>
 
-      {type === 'recurring' && (
-        <Controller
-          control={control}
-          name="timed"
-          render={({ field }) => (
-            <label
-              className={cn(
-                'flex items-center justify-between gap-4 rounded-lg border px-4 py-3',
-                editing ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
-              )}
-            >
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Con horario</span>
-                <span className="text-xs text-muted-foreground">
-                  {field.value
-                    ? 'Aparece como bloque en su hora.'
-                    : 'Sin hora: aparece en la franja "Diario" como tarea para tachar.'}
-                </span>
-              </span>
-              <Switch checked={field.value} onCheckedChange={field.onChange} disabled={editing} />
-            </label>
-          )}
-        />
-      )}
-
-      {withHours && (
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Inicio" htmlFor="startTime">
-            <Input id="startTime" type="time" step={300} {...register('startTime')} />
-          </Field>
-          <Field label="Fin" htmlFor="endTime" error={formState.errors.endTime?.message}>
-            <Input id="endTime" type="time" step={300} {...register('endTime')} />
-          </Field>
-        </div>
-      )}
-
-      {type === 'recurring' && (
+      {isEvent && (
         <>
-          <Field label="Se repite" error={formState.errors.repeat?.message}>
+          <Controller
+            control={control}
+            name="allDay"
+            render={({ field }) => (
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3">
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium">Todo el día</span>
+                  <span className="text-xs text-muted-foreground">Sin horas: cumpleaños, feriados, aniversarios.</span>
+                </span>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </label>
+            )}
+          />
+          {!allDay && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Inicio" htmlFor="startTime">
+                <Input id="startTime" type="time" step={300} {...register('startTime')} />
+              </Field>
+              <Field label="Fin" htmlFor="endTime" error={formState.errors.endTime?.message}>
+                <Input id="endTime" type="time" step={300} {...register('endTime')} />
+              </Field>
+            </div>
+          )}
+        </>
+      )}
+
+      {isRecurring && (
+        <>
+          <Field label="Cada cuánto">
             <Controller
               control={control}
               name="repeat"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-label="Se repite">
+                  <SelectTrigger aria-label="Cada cuánto">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(REPEAT_LABELS) as RepeatKind[]).map((k) => (
+                    {(Object.keys(REPEAT_LABELS) as RepeatRule[]).map((k) => (
                       <SelectItem key={k} value={k}>
                         {REPEAT_LABELS[k]}
                       </SelectItem>
@@ -408,47 +392,19 @@ function EditorForm({
         </>
       )}
 
-      {type === 'special' && (
-        <Controller
-          control={control}
-          name="yearly"
-          render={({ field }) => (
-            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3">
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Se repite cada año</span>
-                <span className="text-xs text-muted-foreground">Ideal para cumpleaños y aniversarios.</span>
-              </span>
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            </label>
-          )}
-        />
-      )}
-
-      {withHours && (
-        <Controller
-          control={control}
-          name="checkable"
-          render={({ field }) => (
-            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3">
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Se puede tachar</span>
-                <span className="text-xs text-muted-foreground">Muestra una casilla para marcarlo como hecho.</span>
-              </span>
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            </label>
-          )}
-        />
-      )}
-
-      {!(type === 'recurring' && !timed) && (
+      {isEvent ? (
         <Field label="Notas" htmlFor="notes">
           <Textarea id="notes" rows={2} placeholder="Opcional" {...register('notes')} />
+        </Field>
+      ) : (
+        <Field label="Descripción" htmlFor="description">
+          <Textarea id="description" rows={2} placeholder="Pasos, notas… (opcional)" {...register('description')} />
         </Field>
       )}
 
       <DialogFooter className="items-center gap-2 sm:justify-between">
         {editing ? (
-          seriesRecurring ? (
+          savedRecurring ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="ghost" className="text-destructive hover:text-destructive">
@@ -488,6 +444,43 @@ function EditorForm({
         </div>
       </DialogFooter>
     </form>
+  )
+}
+
+/** Selector de dos opciones grandes (radio) */
+function Segmented({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string; hint: string; icon: typeof Repeat }[]
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid grid-cols-2 gap-2">
+      {options.map(({ value: v, label: l, hint, icon: Icon }) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          onClick={() => onChange(v)}
+          className={cn(
+            'flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:bg-accent',
+            value === v && 'border-primary bg-accent ring-1 ring-primary',
+          )}
+        >
+          <Icon className="size-4 shrink-0" />
+          <span className="flex flex-col">
+            <span className="text-sm font-medium">{l}</span>
+            <span className="text-xs text-muted-foreground">{hint}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   )
 }
 
