@@ -3,6 +3,7 @@ import { CalendarSchema } from './calendars/schemas/calendar.schema';
 import { CompletionSchema } from './completions/schemas/completion.schema';
 import { DayItemSchema } from './day-items/schemas/day-item.schema';
 import { EventSchema } from './events/schemas/event.schema';
+import { GeneralTaskSchema } from './general-tasks/schemas/general-task.schema';
 import { TaskSchema } from './tasks/schemas/task.schema';
 
 /**
@@ -12,8 +13,9 @@ import { TaskSchema } from './tasks/schemas/task.schema';
  */
 const refs: [string, Schema, string[]][] = [
   ['Calendar', CalendarSchema, ['userId']],
-  ['Event', EventSchema, ['userId', 'calendarId']],
-  ['Task', TaskSchema, ['userId', 'calendarId']],
+  ['Event', EventSchema, ['userId', 'calendarId', 'projectId']],
+  ['Task', TaskSchema, ['userId', 'calendarId', 'projectId']],
+  ['GeneralTask', GeneralTaskSchema, ['userId', 'calendarId']],
   ['DayItem', DayItemSchema, ['userId']],
   ['Completion', CompletionSchema, ['userId', 'sourceId']],
 ];

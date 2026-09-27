@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Completion } from '../completions/schemas/completion.schema';
 import { CalendarEvent } from '../events/schemas/event.schema';
+import { GeneralTask } from '../general-tasks/schemas/general-task.schema';
 import { Task } from '../tasks/schemas/task.schema';
 import { CreateCalendarDto, UpdateCalendarDto } from './dto/calendar.dto';
 import { Calendar, CalendarColor } from './schemas/calendar.schema';
@@ -22,6 +23,7 @@ export class CalendarsService {
     @InjectModel(CalendarEvent.name) private readonly events: Model<CalendarEvent>,
     @InjectModel(Task.name) private readonly tasks: Model<Task>,
     @InjectModel(Completion.name) private readonly completions: Model<Completion>,
+    @InjectModel(GeneralTask.name) private readonly generalTasks: Model<GeneralTask>,
   ) {}
 
   async createDefaults(userId: string) {
@@ -52,14 +54,15 @@ export class CalendarsService {
     return calendar;
   }
 
-  /** Cuántos eventos y tareas se perderían al borrar la categoría */
+  /** Cuántos eventos, tareas y tareas generales/proyectos se perderían al borrar la categoría */
   async usage(userId: string, id: string) {
     await this.findOne(userId, id);
-    const [events, tasks] = await Promise.all([
+    const [events, tasks, generalTasks] = await Promise.all([
       this.events.countDocuments({ userId, calendarId: id }),
       this.tasks.countDocuments({ userId, calendarId: id }),
+      this.generalTasks.countDocuments({ userId, calendarId: id }),
     ]);
-    return { events, tasks };
+    return { events, tasks, generalTasks };
   }
 
   async remove(userId: string, id: string) {
@@ -75,6 +78,7 @@ export class CalendarsService {
       this.completions.deleteMany({ userId, sourceId: { $in: [...eventIds, ...taskIds] } }),
       this.events.deleteMany({ userId, calendarId: id }),
       this.tasks.deleteMany({ userId, calendarId: id }),
+      this.generalTasks.deleteMany({ userId, calendarId: id }),
     ]);
     await this.calendars.deleteOne({ _id: id, userId });
   }

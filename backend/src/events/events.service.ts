@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CalendarsService } from '../calendars/calendars.service';
 import { parseDateTime, toDateTimeString as toLocal } from '../common/utils/date';
+import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { Completion } from '../completions/schemas/completion.schema';
 import { eventOccursOn } from '../recurrence/recurrence';
 import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
@@ -17,6 +18,7 @@ export class EventsService {
     @InjectModel(CalendarEvent.name) private readonly events: Model<CalendarEvent>,
     @InjectModel(Completion.name) private readonly completions: Model<Completion>,
     private readonly calendars: CalendarsService,
+    private readonly projects: GeneralTasksService,
   ) {}
 
   async findOne(userId: string, id: string): Promise<EventDocument> {
@@ -41,8 +43,12 @@ export class EventsService {
     await this.calendars.findOne(userId, dto.calendarId);
     const allDay = dto.allDay ?? false;
     const { start, end } = this.parseRange(dto.start, dto.end, allDay);
+    const { projectId, nodeId, ...data } = dto;
+    const link =
+      projectId && nodeId ? await this.projects.prepareLink(userId, projectId, nodeId) : null;
     return this.events.create({
-      ...dto,
+      ...data,
+      ...link,
       userId: new Types.ObjectId(userId),
       calendarId: new Types.ObjectId(dto.calendarId),
       start,

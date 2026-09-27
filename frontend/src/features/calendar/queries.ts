@@ -14,8 +14,13 @@ export const keys = {
 const onError = (e: Error) => toast.error(e.message)
 
 /** Tras cualquier cambio, se recargan la agenda visible y el día abierto */
-const refreshAgenda = (qc: QueryClient) =>
-  Promise.all([qc.invalidateQueries({ queryKey: ['agenda'] }), qc.invalidateQueries({ queryKey: ['day'] })])
+export const refreshAgenda = (qc: QueryClient) =>
+  Promise.all([
+    qc.invalidateQueries({ queryKey: ['agenda'] }),
+    qc.invalidateQueries({ queryKey: ['day'] }),
+    // Las actividades de los proyectos muestran lo programado y si se tachó
+    qc.invalidateQueries({ queryKey: ['general-tasks'] }),
+  ])
 
 export function useCalendars() {
   return useQuery({ queryKey: keys.calendars, queryFn: () => api<Calendar[]>('/calendars') })
@@ -48,7 +53,7 @@ export function useTask(id: string | undefined) {
 export function useCalendarUsage(id: string | null) {
   return useQuery({
     queryKey: ['calendar-usage', id],
-    queryFn: () => api<{ events: number; tasks: number }>(`/calendars/${id}/usage`),
+    queryFn: () => api<{ events: number; tasks: number; generalTasks?: number }>(`/calendars/${id}/usage`),
     enabled: !!id,
     staleTime: 0,
   })

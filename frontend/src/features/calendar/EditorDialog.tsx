@@ -172,15 +172,15 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
     repeat: 'daily',
     days: [weekdayOf(fromKey(target.date))],
     until: '',
-    title: '',
+    title: t?.title ?? '',
     calendarId: '',
     date: target.date,
     endDate: target.date,
     allDay: t?.allDay ?? false,
     startTime: time,
     endTime: endAfter(time),
-    notes: '',
-    description: '',
+    notes: t?.notes ?? '',
+    description: t?.notes ?? '',
   }
 }
 
@@ -232,8 +232,10 @@ function EditorForm({
 
   const onSubmit = handleSubmit(async (v) => {
     const id = editing ? target.id : undefined
-    if (v.kind === 'task') await saveTask.mutateAsync({ id, data: toTaskPayload(v) })
-    else await saveEvent.mutateAsync({ id, data: toEventPayload(v) })
+    // Programar una actividad de un proyecto: queda vinculada
+    const link = target.mode === 'create' ? target.link : undefined
+    if (v.kind === 'task') await saveTask.mutateAsync({ id, data: { ...toTaskPayload(v), ...link } })
+    else await saveEvent.mutateAsync({ id, data: { ...toEventPayload(v), ...link } })
     onClose()
   })
 
@@ -250,14 +252,16 @@ function EditorForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <DialogHeader>
         <DialogTitle>
-          {editing ? 'Editar' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
+          {editing ? 'Editar' : target.link ? 'Programar como' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
         </DialogTitle>
         <DialogDescription>
-          {savedRecurring
-            ? 'Los cambios se aplican a todas las repeticiones.'
-            : isEvent
-              ? 'Ocurre en el calendario; no se tacha.'
-              : 'Algo por hacer que tachas al terminar.'}
+          {target.mode === 'create' && target.link
+            ? 'La actividad del proyecto queda en el calendario y se mantiene vinculada.'
+            : savedRecurring
+              ? 'Los cambios se aplican a todas las repeticiones.'
+              : isEvent
+                ? 'Ocurre en el calendario; no se tacha.'
+                : 'Algo por hacer que tachas al terminar.'}
         </DialogDescription>
       </DialogHeader>
 

@@ -26,6 +26,9 @@ export interface CalendarEvent {
   checkable: boolean
   /** Evento especial de día completo */
   allDay: boolean
+  /** Programado desde un elemento de un proyecto */
+  projectId?: string | null
+  nodeId?: string | null
 }
 
 export interface Task {
@@ -37,6 +40,8 @@ export interface Task {
   rrule: string
   exdates: string[]
   position?: number
+  projectId?: string | null
+  nodeId?: string | null
 }
 
 export interface AgendaTask {
@@ -50,6 +55,13 @@ export interface AgendaTask {
   recurring: boolean
   position: number
   done: boolean
+  /** Viene de un proyecto */
+  project?: ProjectRef | null
+}
+
+export interface ProjectRef {
+  id: string
+  title: string
 }
 
 export interface AgendaEvent {
@@ -65,6 +77,7 @@ export interface AgendaEvent {
   allDay: boolean
   checkable: boolean
   done: boolean
+  project?: ProjectRef | null
 }
 
 export interface AgendaDay {
@@ -78,4 +91,65 @@ export interface AgendaRange {
   from: string
   to: string
   days: AgendaDay[]
+}
+
+/* ─────────── Tareas generales y proyectos ─────────── */
+
+export type NodeType = 'start' | 'activity' | 'decision' | 'end'
+export type NodeStatus = 'pending' | 'in_progress' | 'done'
+
+/** Lo que el calendario tiene de una actividad */
+export interface ScheduledLink {
+  kind: 'task' | 'event'
+  id: string
+  date: string
+  start?: string
+  end?: string
+  allDay?: boolean
+  oneOff: boolean
+  done: boolean
+}
+
+export interface ProjectNode {
+  id: string
+  type: NodeType
+  title: string
+  notes: string
+  x: number
+  y: number
+  status: NodeStatus
+  scheduled?: ScheduledLink | null
+}
+
+export interface ProjectEdge {
+  id: string
+  source: string
+  target: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  label: string
+}
+
+export interface ProjectProgress {
+  done: number
+  inProgress: number
+  total: number
+}
+
+/** Algo por hacer sin día fijo; si es proyecto, tiene diagrama de actividades */
+export interface GeneralTask {
+  id: string
+  calendarId: string
+  title: string
+  description: string
+  done: boolean
+  isProject: boolean
+  position: number
+  progress?: ProjectProgress
+}
+
+export interface Project extends GeneralTask {
+  nodes: ProjectNode[]
+  edges: ProjectEdge[]
+  progress: ProjectProgress
 }

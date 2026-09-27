@@ -121,9 +121,22 @@ pnpm format                                 # prettier
 
   Los eventos no se tachan; las tareas sí. Los eventos de todo el día y los de varios días van como **barra** en la
   fila "Todo el día" de la semana y arriba de cada día en el mes, continua de un día al otro. Las tareas van en la franja "Tareas". El avance (hechas/total) cuenta solo tareas.
+- **Pendientes y proyectos** (`/pendientes`, botón **Proyectos** arriba o "Nuevo → Tarea general / Proyecto"):
+  - **Tareas generales**: cosas por hacer sin día fijo (renovar el pasaporte). Se tachan, se editan en línea y se
+    reordenan arrastrando.
+  - **Proyectos**: cada uno abre un **lienzo** (`/proyectos/:id`) para armar un diagrama de actividades. Arrastras
+    desde la paleta **Actividad**, **Decisión**, **Inicio** y **Fin**, y los unes con flechas desde los puntos de sus
+    bordes; a las flechas de una decisión les pones etiqueta (Sí / No). Se guarda solo.
+  - Cada actividad tiene estado (pendiente, **en progreso**, hecha): clic en su círculo para cambiarlo. Lo que está en
+    progreso **late** y sus flechas llevan **pulsos** que viajan de una actividad a la otra; lo hecho queda en verde y lo
+    que aún no llega, punteado. Al terminar una actividad, las que siguen se ponen en progreso solas (tras una decisión
+    no: ahí eliges el camino).
+  - Una actividad se **programa como tarea o como evento** desde su panel: abre el mismo editor del calendario y queda
+    vinculada. En el calendario la tarea muestra el nombre del proyecto; tacharla allí la marca hecha en el diagrama (y
+    al revés). Borrar la actividad o el proyecto deja lo programado en el calendario, sin vínculo.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
-  avisa cuántos eventos y tareas se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.
+  avisa cuántos eventos, tareas y proyectos se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.
 
 Estructura:
 
@@ -132,6 +145,7 @@ frontend/src/
 ├── components/ui/        # componentes shadcn (button, dialog, select, checkbox…)
 ├── features/auth/        # AuthProvider, LoginPage, RequireAuth
 ├── features/calendar/    # CalendarPage, Sidebar, Toolbar, DayDialog, EditorDialog, week/, month/
+├── features/projects/    # Pendientes, GeneralTaskDialog, ProjectPage y diagram/ (lienzo con React Flow)
 └── lib/                  # api, fechas, colores, overlap (columnas), recurrence (RRULE)
 ```
 
@@ -175,6 +189,12 @@ dentro de `frontend/`.
 | `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
 | `PUT` | `/tasks/order` | `{ ids }` nuevo orden de las tareas |
 | `POST` | `/tasks/carry-over` | `{ from, to, calendarIds? }` pasa las tareas normales no hechas a otro día |
+| `GET` `POST` | `/general-tasks` | Tareas generales y proyectos `{ calendarId, title, description?, isProject? }` (la lista trae el avance de cada proyecto) |
+| `GET` `PATCH` `DELETE` | `/general-tasks/:id` | Ver (con el diagrama y lo que cada actividad tiene en el calendario) / editar `{ title?, description?, calendarId?, done? }` / borrar |
+| `PUT` | `/general-tasks/:id/diagram` | `{ nodes: [{ id, type, title, notes, x, y, status }], edges: [{ id, source, target, label }] }` |
+| `PUT` | `/general-tasks/order` | `{ ids }` nuevo orden |
+
+Para programar una actividad, `POST /tasks` o `POST /events` aceptan `projectId` y `nodeId`.
 
 Cada día de la agenda tiene esta forma:
 

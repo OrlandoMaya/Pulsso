@@ -6,6 +6,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-flow-idle: var(--flow-idle);
+  --color-flow-ready: var(--flow-ready);
+  --color-flow-done: var(--flow-done);
+  --color-flow-active: var(--flow-active);
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
@@ -54,6 +58,12 @@
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
   --sidebar: oklch(0.985 0 0);
+  /* Diagrama de proyectos: flechas y pulsos */
+  --flow-idle: oklch(0.8 0.008 286);
+  --flow-ready: oklch(0.45 0.015 286);
+  --flow-done: oklch(0.6 0.15 160);
+  --flow-active: oklch(0.58 0.22 275);
+  --flow-grid: oklch(0.88 0.004 286);
 }
 
 .dark {
@@ -76,6 +86,11 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);
   --sidebar: oklch(0.21 0.006 285.885);
+  --flow-idle: oklch(0.4 0.01 286);
+  --flow-ready: oklch(0.75 0.012 286);
+  --flow-done: oklch(0.7 0.15 160);
+  --flow-active: oklch(0.72 0.18 275);
+  --flow-grid: oklch(0.3 0.006 286);
 }
 
 @layer base {
@@ -85,4 +100,50 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+}
+
+/* Latido de lo que está en progreso: un anillo que se expande y se apaga */
+@keyframes flow-heartbeat {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--flow-active) 45%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in oklch, var(--flow-active) 0%, transparent);
+  }
+}
+
+.flow-heartbeat {
+  animation: flow-heartbeat 1.6s ease-out infinite;
+}
+
+/* Pulso que viaja por una flecha: brillo alrededor */
+.flow-pulse {
+  filter: drop-shadow(0 0 4px var(--flow-active));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-heartbeat {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--flow-active) 35%, transparent);
+  }
+  .flow-pulse {
+    display: none;
+  }
+}
+
+/* React Flow: que tome los colores del tema */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke-default: var(--flow-idle);
+  --xy-connectionline-stroke-default: var(--flow-active);
+  --xy-handle-background-color-default: var(--background);
+  --xy-handle-border-color-default: var(--flow-ready);
+  --xy-controls-button-background-color-default: var(--card);
+  --xy-controls-button-background-color-hover-default: var(--accent);
+  --xy-controls-button-color-default: var(--foreground);
+  --xy-controls-button-border-color-default: var(--border);
+  --xy-minimap-background-color-default: var(--card);
+  --xy-selection-background-color-default: color-mix(in oklch, var(--flow-active) 8%, transparent);
+  --xy-selection-border-default: 1px dashed var(--flow-active);
 }

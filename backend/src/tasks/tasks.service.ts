@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CalendarsService } from '../calendars/calendars.service';
 import { parseDate, toDateKey } from '../common/utils/date';
+import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { Completion } from '../completions/schemas/completion.schema';
 import { taskOccursOn } from '../recurrence/recurrence';
 import { CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
@@ -14,6 +15,7 @@ export class TasksService {
     @InjectModel(Task.name) private readonly tasks: Model<Task>,
     @InjectModel(Completion.name) private readonly completions: Model<Completion>,
     private readonly calendars: CalendarsService,
+    private readonly projects: GeneralTasksService,
   ) {}
 
   findAll(userId: string) {
@@ -36,8 +38,12 @@ export class TasksService {
   async create(userId: string, dto: CreateTaskDto) {
     await this.calendars.findOne(userId, dto.calendarId);
     this.checkDate(dto.startDate);
+    const { projectId, nodeId, ...data } = dto;
+    const link =
+      projectId && nodeId ? await this.projects.prepareLink(userId, projectId, nodeId) : null;
     return this.tasks.create({
-      ...dto,
+      ...data,
+      ...link,
       description: dto.description ?? '',
       position: await this.nextPosition(userId),
       userId: new Types.ObjectId(userId),
