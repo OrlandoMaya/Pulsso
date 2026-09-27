@@ -39,5 +39,3 @@ export function SpecialChip({
     </button>
   )
 }
-
-export const isSpecial = (e: AgendaEvent) => e.allDay

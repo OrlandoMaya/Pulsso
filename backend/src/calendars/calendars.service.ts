@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Completion } from '../completions/schemas/completion.schema';
@@ -52,8 +52,21 @@ export class CalendarsService {
     return calendar;
   }
 
+  /** Cuántos eventos y tareas se perderían al borrar la categoría */
+  async usage(userId: string, id: string) {
+    await this.findOne(userId, id);
+    const [events, tasks] = await Promise.all([
+      this.events.countDocuments({ userId, calendarId: id }),
+      this.tasks.countDocuments({ userId, calendarId: id }),
+    ]);
+    return { events, tasks };
+  }
+
   async remove(userId: string, id: string) {
     await this.findOne(userId, id);
+    if ((await this.calendars.countDocuments({ userId })) <= 1) {
+      throw new BadRequestException('Debe quedar al menos una categoría');
+    }
     const [eventIds, taskIds] = await Promise.all([
       this.events.find({ userId, calendarId: id }).distinct('_id'),
       this.tasks.find({ userId, calendarId: id }).distinct('_id'),

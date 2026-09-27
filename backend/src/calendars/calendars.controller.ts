@@ -18,6 +18,11 @@ export class CalendarsController {
     return this.calendars.create(user.userId, dto);
   }
 
+  @Get(':id/usage')
+  usage(@CurrentUser() user: AuthUser, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.calendars.usage(user.userId, id);
+  }
+
   @Patch(':id')
   update(
     @CurrentUser() user: AuthUser,

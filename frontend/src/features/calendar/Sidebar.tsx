@@ -1,4 +1,5 @@
-import { Clock, Plus, Repeat, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Clock, MoreHorizontal, Pencil, Plus, Repeat, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -11,11 +12,12 @@ import { THEME_OPTIONS } from '../theme/theme-options'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { toKey, type View } from '@/lib/dates'
-import type { AgendaRange } from '@/lib/types'
+import type { AgendaRange, Calendar } from '@/lib/types'
 import type { EventType } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from './editor-context'
 import { Logo } from './Logo'
+import { CategoryDialog, DeleteCategoryDialog } from './CategoryDialogs'
 import { MiniCalendar } from './MiniCalendar'
 import { useCalendars, useToggleCalendar } from './queries'
 
@@ -65,6 +67,8 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
   const { openEditor } = useCalendarActions()
   const calendars = useCalendars()
   const toggle = useToggleCalendar()
+  const [editing, setEditing] = useState<Calendar | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<Calendar | null>(null)
 
   const totals = agenda?.days.reduce(
     (acc, d) => ({ done: acc.done + d.progress.done, total: acc.total + d.progress.total }),
@@ -130,19 +134,56 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
       </div>
 
       <div className="flex flex-col gap-1">
-        <h2 className="px-2 pb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Categorías</h2>
+        <div className="flex items-center justify-between pr-1 pb-1 pl-2">
+          <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Categorías</h2>
+          <Button variant="ghost" size="icon-sm" aria-label="Nueva categoría" onClick={() => setEditing('new')}>
+            <Plus />
+          </Button>
+        </div>
         {calendars.isPending && Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="mx-2 my-1.5 h-5" />)}
         {calendars.data?.map((c) => (
-          <label
-            key={c.id}
-            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-          >
-            <Checkbox checked={c.visible} onCheckedChange={(v) => toggle.mutate({ id: c.id, visible: v === true })} />
-            <span className="flex-1">{c.name}</span>
-            <span className={cn('size-2 rounded-full', COLORS[c.color].dot)} />
-          </label>
+          <div key={c.id} className="group flex items-center rounded-md pr-1 hover:bg-accent">
+            <label className="flex flex-1 cursor-pointer items-center gap-2.5 py-1.5 pl-2 text-sm">
+              <Checkbox checked={c.visible} onCheckedChange={(v) => toggle.mutate({ id: c.id, visible: v === true })} />
+              <span className="flex-1 truncate">{c.name}</span>
+              <span className={cn('size-2 shrink-0 rounded-full', COLORS[c.color].dot)} />
+            </label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Opciones de ${c.name}`}
+                  className="ml-1 size-7 opacity-100 lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100 data-[state=open]:opacity-100"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setEditing(c)}>
+                  <Pencil />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(c)}>
+                  <Trash2 />
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ))}
       </div>
+
+      <CategoryDialog
+        open={editing !== null}
+        calendar={editing && editing !== 'new' ? editing : undefined}
+        onOpenChange={(o) => !o && setEditing(null)}
+      />
+      <DeleteCategoryDialog
+        calendar={deleting}
+        isLast={(calendars.data?.length ?? 0) <= 1}
+        onOpenChange={(o) => !o && setDeleting(null)}
+      />
     </>
   )
 }
