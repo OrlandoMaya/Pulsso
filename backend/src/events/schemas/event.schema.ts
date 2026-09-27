@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { toDateTimeString } from '../../common/utils/date';
 import { toJSONOptions } from '../../common/utils/serialize';
 
@@ -18,10 +18,10 @@ import { toJSONOptions } from '../../common/utils/serialize';
   },
 })
 export class CalendarEvent {
-  @Prop({ type: Types.ObjectId, required: true, index: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true, index: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
   calendarId: Types.ObjectId;
 
   @Prop({ required: true, trim: true, maxlength: 120 })

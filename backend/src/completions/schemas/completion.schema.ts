@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { toJSONOptions } from '../../common/utils/serialize';
 
 export const SOURCE_TYPES = ['event', 'task'] as const;
@@ -8,13 +8,13 @@ export type SourceType = (typeof SOURCE_TYPES)[number];
 /** Una ocurrencia tachada: (evento o tarea) + día */
 @Schema({ timestamps: { createdAt: 'doneAt', updatedAt: false }, toJSON: toJSONOptions })
 export class Completion {
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
   userId: Types.ObjectId;
 
   @Prop({ required: true, enum: SOURCE_TYPES })
   sourceType: SourceType;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
   sourceId: Types.ObjectId;
 
   /** Día de la ocurrencia (YYYY-MM-DD) */

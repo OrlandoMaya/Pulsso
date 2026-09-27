@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { toJSONOptions } from '../../common/utils/serialize';
 
 /** Tarea recurrente sin hora (franja "Diario"); siempre se puede tachar */
@@ -15,10 +15,10 @@ import { toJSONOptions } from '../../common/utils/serialize';
   },
 })
 export class Task {
-  @Prop({ type: Types.ObjectId, required: true, index: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true, index: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
   calendarId: Types.ObjectId;
 
   @Prop({ required: true, trim: true, maxlength: 120 })
