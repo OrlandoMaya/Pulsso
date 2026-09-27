@@ -63,7 +63,7 @@ function DayContent({
 
   return (
     <>
-      <header className="flex flex-col gap-3.5 border-b px-6 pt-6 pb-[18px]">
+      <header className="flex flex-col gap-3.5 border-b px-4 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-[18px]">
         <div className="flex items-start gap-3">
           <div className="flex h-14 w-[52px] shrink-0 flex-col items-center justify-center rounded-[10px] bg-primary text-primary-foreground">
             <span className="text-[11px] font-medium tracking-wider uppercase opacity-75">
@@ -86,14 +86,18 @@ function DayContent({
           </Button>
         </div>
         <div className="flex items-center gap-3">
-          <Progress value={pct} className="h-2 flex-1" indicatorClassName={cn(pct === 100 && 'bg-emerald-600')} />
+          <Progress
+            value={pct}
+            className="h-2 flex-1"
+            indicatorClassName={cn(pct === 100 && 'bg-emerald-600 dark:bg-emerald-500')}
+          />
           <span className="font-mono text-[13px] text-muted-foreground">
             {done}/{total}
           </span>
         </div>
       </header>
 
-      <div className="flex flex-col gap-6 overflow-y-auto px-6 pt-[18px] pb-4">
+      <div className="flex flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4 sm:px-6 sm:pt-[18px]">
         <section className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Por hacer</h3>
@@ -164,10 +168,10 @@ function DayContent({
         </section>
       </div>
 
-      <footer className="flex items-center gap-2 border-t bg-muted/40 px-6 py-4">
+      <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/40 px-4 py-3 sm:px-6 sm:py-4">
         <Button variant="ghost" onClick={() => onShowWeek(date)}>
           <CalendarDays />
-          Ver en semana
+          <span className="max-sm:sr-only">Ver en semana</span>
         </Button>
         <div className="flex-1" />
         <Button variant="outline" onClick={onClose}>
@@ -256,7 +260,7 @@ function QuickAdd({ date }: { date: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="mt-1 flex gap-2">
+    <form onSubmit={submit} className="mt-1 flex flex-wrap gap-2 sm:flex-nowrap">
       <label htmlFor="quick-task" className="sr-only">
         Nueva tarea para este día
       </label>
@@ -266,10 +270,11 @@ function QuickAdd({ date }: { date: string }) {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Agregar tarea para este día…"
         maxLength={120}
-        className="h-10 flex-1"
+        className="h-10 w-full sm:w-auto sm:flex-1"
       />
-      <Select value={selected} onValueChange={setCalendarId}>
-        <SelectTrigger className="h-10! w-[130px]" aria-label="Calendario">
+      {/* Se vuelve a montar al llegar los calendarios para que muestre el valor */}
+      <Select key={calendars.data ? 'ready' : 'loading'} value={selected} onValueChange={setCalendarId}>
+        <SelectTrigger className="h-10! flex-1 sm:w-[130px] sm:flex-none" aria-label="Calendario">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { toKey, type View } from '@/lib/dates'
@@ -20,7 +21,41 @@ interface Props {
   onSelectDate: (d: Date) => void
 }
 
-export function Sidebar({ view, date, agenda, onSelectDate }: Props) {
+/** Barra lateral fija en pantallas grandes */
+export function Sidebar(props: Props) {
+  return (
+    <aside className="hidden w-[280px] shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-4 py-5 lg:flex">
+      <SidebarContent {...props} />
+    </aside>
+  )
+}
+
+/** En pantallas chicas la misma barra se abre como panel deslizable */
+export function MobileSidebar({
+  open,
+  onOpenChange,
+  ...props
+}: Props & { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const close = () => onOpenChange(false)
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-[300px] gap-6 overflow-y-auto bg-sidebar px-4 py-5 lg:hidden">
+        <SheetTitle className="sr-only">Menú</SheetTitle>
+        <SheetDescription className="sr-only">Mini calendario, progreso y calendarios</SheetDescription>
+        <SidebarContent
+          {...props}
+          onSelectDate={(d) => {
+            props.onSelectDate(d)
+            close()
+          }}
+          onAction={close}
+        />
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & { onAction?: () => void }) {
   const { openEditor } = useCalendarActions()
   const calendars = useCalendars()
   const toggle = useToggleCalendar()
@@ -32,8 +67,13 @@ export function Sidebar({ view, date, agenda, onSelectDate }: Props) {
   const pct = totals?.total ? Math.round((totals.done * 100) / totals.total) : 0
   const today = toKey(new Date())
 
+  const create = (kind: 'event' | 'task') => {
+    onAction?.()
+    openEditor({ mode: 'create', kind, date: today })
+  }
+
   return (
-    <aside className="hidden w-[280px] shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-4 py-5 lg:flex">
+    <>
       <Logo className="px-1" />
 
       <DropdownMenu>
@@ -44,11 +84,11 @@ export function Sidebar({ view, date, agenda, onSelectDate }: Props) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px]">
-          <DropdownMenuItem onSelect={() => openEditor({ mode: 'create', kind: 'event', date: today })}>
+          <DropdownMenuItem onSelect={() => create('event')}>
             <CalendarPlus />
             Evento
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openEditor({ mode: 'create', kind: 'task', date: today })}>
+          <DropdownMenuItem onSelect={() => create('task')}>
             <ListChecks />
             Tarea recurrente
           </DropdownMenuItem>
@@ -64,7 +104,7 @@ export function Sidebar({ view, date, agenda, onSelectDate }: Props) {
             {totals ? `${totals.done}/${totals.total}` : '–'}
           </span>
         </div>
-        <Progress value={pct} indicatorClassName={cn(pct === 100 && 'bg-emerald-600')} />
+        <Progress value={pct} indicatorClassName={cn(pct === 100 && 'bg-emerald-600 dark:bg-emerald-500')} />
         <p className="text-xs text-muted-foreground">Marca la casilla para tachar una tarea o evento recurrente.</p>
       </div>
 
@@ -84,6 +124,6 @@ export function Sidebar({ view, date, agenda, onSelectDate }: Props) {
           </label>
         ))}
       </div>
-    </aside>
+    </>
   )
 }

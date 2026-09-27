@@ -9,7 +9,7 @@ import { EditorDialog } from './EditorDialog'
 import { MonthView } from './month/MonthView'
 import { useCalendarNav } from './navigation'
 import { useAgenda } from './queries'
-import { Sidebar } from './Sidebar'
+import { MobileSidebar, Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { WeekView } from './week/WeekView'
 
@@ -18,6 +18,7 @@ export function CalendarPage({ view }: { view: View }) {
   const { start, end } = visibleRange(view, nav.date)
   const agenda = useAgenda(toKey(start), toKey(end))
   const [editor, setEditor] = useState<EditorTarget | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const days = useMemo(() => new Map<string, AgendaDay>(agenda.data?.days.map((d) => [d.date, d])), [agenda.data])
   const actions = useMemo<CalendarActions>(() => ({ openEditor: setEditor, openDay: nav.openDay }), [nav.openDay])
@@ -36,6 +37,7 @@ export function CalendarPage({ view }: { view: View }) {
             subtitle={subtitle}
             onToday={() => nav.go(view, new Date())}
             onShift={(dir) => nav.go(view, shiftDate(view, nav.date, dir))}
+            onMenu={() => setMenuOpen(true)}
           />
           {agenda.isError ? (
             <div className="grid flex-1 place-items-center p-6">
@@ -48,12 +50,21 @@ export function CalendarPage({ view }: { view: View }) {
               </div>
             </div>
           ) : view === 'semana' ? (
-            <WeekView start={start} end={end} days={days} />
+            <WeekView start={start} end={end} days={days} focus={nav.date} />
           ) : (
             <MonthView month={nav.date} start={start} end={end} days={days} />
           )}
         </main>
       </div>
+
+      <MobileSidebar
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        view={view}
+        date={nav.date}
+        agenda={agenda.data}
+        onSelectDate={(d) => nav.go(view, d)}
+      />
 
       {/* En pantallas chicas no hay barra lateral: botón flotante para crear */}
       <Button

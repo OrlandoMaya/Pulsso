@@ -286,7 +286,7 @@ function EditorForm({
             control={control}
             name="calendarId"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
+              <Select key={field.value ? 'ready' : 'empty'} value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger aria-label="Calendario">
                   <SelectValue placeholder="Elige uno" />
                 </SelectTrigger>

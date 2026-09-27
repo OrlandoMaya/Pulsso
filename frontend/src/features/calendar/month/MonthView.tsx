@@ -102,7 +102,11 @@ function DayCell({
           <span
             className={cn(
               'flex items-center gap-0.5 pr-0.5 font-mono text-[11px] max-sm:hidden',
-              complete ? 'text-emerald-600' : past ? 'text-red-600' : 'text-muted-foreground',
+              complete
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : past
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-muted-foreground',
             )}
             title={`${done} de ${total} hechas`}
           >

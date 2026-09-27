@@ -7,6 +7,8 @@ import { AuthProvider } from './features/auth/AuthProvider'
 import { LoginPage } from './features/auth/LoginPage'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { CalendarPage } from './features/calendar/CalendarPage'
+import { ThemeProvider } from './features/theme/ThemeProvider'
+import { useTheme } from './features/theme/theme-context'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,10 +20,11 @@ const queryClient = new QueryClient({
 })
 
 function Root() {
+  const { resolved } = useTheme()
   return (
     <AuthProvider>
       <Outlet />
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" theme={resolved} />
     </AuthProvider>
   )
 }
@@ -49,8 +52,10 @@ const router = createBrowserRouter([
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }

@@ -70,6 +70,10 @@ pnpm format                                 # prettier
   de eventos (los simultáneos comparten fila) y "+N más". En móvil se resume con puntos.
 - **Modal del día** (`?dia=YYYY-MM-DD`): lista "Por hacer" con casillas, agregar una tarea solo para ese
   día, agenda con los eventos "Al mismo tiempo" y opciones para editar, quitar solo ese día o eliminar.
+- **Modo oscuro**: Claro / Oscuro / Sistema desde el botón de la luna o el menú de cuenta (también en el
+  login). Se guarda en el navegador y se aplica antes de pintar, sin parpadeo.
+- **Responsive**: en pantallas chicas la barra lateral se abre como panel desde el botón de menú, la semana se
+  desplaza de lado con la columna de horas fija, el mes se resume con puntos y hay un botón flotante "+".
 - **Editor**: evento o tarea recurrente, con repetición (diaria, entre semana, días elegidos, mensual,
   anual), fecha de fin opcional y la opción "Se puede tachar".
 

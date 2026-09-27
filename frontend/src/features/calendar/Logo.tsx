@@ -6,7 +6,7 @@ export function Logo({ className, inverted = false }: { className?: string; inve
       <div
         className={cn(
           'grid size-8 place-items-center rounded-lg',
-          inverted ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground',
+          inverted ? 'bg-zinc-50 text-zinc-900' : 'bg-primary text-primary-foreground',
         )}
       >
         <svg
