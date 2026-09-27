@@ -27,11 +27,11 @@ frontend/   # App: React 19 + Vite + Tailwind v4 + shadcn/ui
 ```bash
 pnpm install
 cp backend/.env.example backend/.env   # pega tu MONGODB_URI y un JWT_SECRET largo
-pnpm dev:api                           # API en http://localhost:3000/api
-pnpm dev:web                           # App en http://localhost:5173 (reenvía /api al backend)
+pnpm dev:api                           # API en http://localhost:4000/api
+pnpm dev:web                           # App en http://localhost:4040 (reenvía /api al backend)
 ```
 
-Abre http://localhost:5173, crea tu cuenta y listo.
+Abre http://localhost:4040, crea tu cuenta y listo.
 
 ### Variables del backend (`backend/.env`)
 
@@ -40,8 +40,8 @@ Abre http://localhost:5173, crea tu cuenta y listo.
 | `MONGODB_URI` | Cadena de conexión de Atlas |
 | `JWT_SECRET` | Secreto para firmar sesiones (mín. 32 caracteres; `openssl rand -base64 48`) |
 | `JWT_EXPIRES_IN` | Duración de la sesión (por defecto `7d`) |
-| `PORT` | Puerto (por defecto `3000`) |
-| `CORS_ORIGIN` | Origen(es) del frontend separados por coma (por defecto `http://localhost:5173`) |
+| `PORT` | Puerto (por defecto `4000`) |
+| `CORS_ORIGIN` | Origen(es) del frontend separados por coma (por defecto `http://localhost:4040`) |
 | `TRUST_PROXY` | Número de proxies delante de la API (`1` detrás de nginx). Déjalo vacío si la API está expuesta directo |
 
 ### Variables del frontend (`frontend/.env`, opcional)
@@ -57,7 +57,7 @@ desde la raíz del repo porque el lockfile de pnpm es compartido.
 
 ```bash
 cp backend/.env.example backend/.env   # MONGODB_URI de Atlas + JWT_SECRET
-docker compose up --build              # → http://localhost:8080
+docker compose up --build              # → http://localhost:4040
 ```
 
 - **backend** (`backend/Dockerfile`): Node 22 Alpine en varias etapas (compila con dependencias de desarrollo
@@ -66,7 +66,7 @@ docker compose up --build              # → http://localhost:8080
   No se publica al exterior: solo nginx lo alcanza por la red interna de compose.
 - **frontend** (`frontend/Dockerfile`): compila con Vite y sirve con nginx. `nginx.conf.template` atiende las
   rutas de React, cachea `/assets` y reenvía `/api` al backend (`API_UPSTREAM`, por defecto
-  `http://backend:3000`), así que no hace falta CORS.
+  `http://backend:4000`), así que no hace falta CORS.
 - `TRUST_PROXY=1` (ya puesto en compose) hace que la API use la IP real del cliente para el límite de intentos
   de login en lugar de la de nginx.
 - Para que la app llame a una API en otro dominio: `docker build -f frontend/Dockerfile --build-arg

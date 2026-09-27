@@ -21,7 +21,7 @@ RUN pnpm --filter @pulsso/frontend build
 
 FROM nginx:1.29-alpine AS runtime
 # nginx reemplaza ${API_UPSTREAM} en la plantilla al arrancar
-ENV API_UPSTREAM=http://backend:3000
+ENV API_UPSTREAM=http://backend:4000
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/frontend/dist /usr/share/nginx/html
 EXPOSE 80
