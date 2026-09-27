@@ -16,6 +16,8 @@ import { useTheme } from '../theme/theme-context'
 import { THEME_OPTIONS } from '../theme/theme-options'
 import { ThemeToggle } from '../theme/ThemeToggle'
 
+const VIEW_LABEL: Record<View, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' }
+
 interface Props {
   view: View
   date: Date
@@ -26,7 +28,7 @@ interface Props {
 }
 
 export function Toolbar({ view, date, subtitle, onToday, onShift, onMenu }: Props) {
-  const unit = view === 'semana' ? 'Semana' : 'Mes'
+  const unit = VIEW_LABEL[view]
 
   return (
     <header className="flex min-h-[68px] shrink-0 flex-wrap items-center gap-1.5 border-b px-3 py-3 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
@@ -50,22 +52,24 @@ export function Toolbar({ view, date, subtitle, onToday, onShift, onMenu }: Prop
       </div>
       <div className="flex-1" />
       <nav aria-label="Vista" className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px]">
-        {(['semana', 'mes'] as const).map((v) => (
+        {(['dia', 'semana', 'mes'] as const).map((v) => (
           <Link
             key={v}
             to={`/${v}/${toKey(date)}`}
             aria-current={v === view ? 'page' : undefined}
             className={cn(
-              'flex h-full items-center rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
+              'flex h-full items-center rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
               v === view && 'bg-background text-foreground shadow-sm dark:bg-input/40',
             )}
           >
-            {v === 'semana' ? 'Semana' : 'Mes'}
+            {VIEW_LABEL[v]}
           </Link>
         ))}
       </nav>
       <ThemeToggle className="hidden sm:inline-flex" />
-      <AccountMenu />
+      <div className="hidden sm:block">
+        <AccountMenu />
+      </div>
     </header>
   )
 }

@@ -65,6 +65,18 @@ export interface AgendaDay {
   events: AgendaEvent[]
 }
 
+export type DayList = 'personal' | 'work'
+
+export interface DayItem {
+  id: string
+  date: string
+  list: DayList
+  title: string
+  description: string
+  done: boolean
+  position: number
+}
+
 export interface AgendaRange {
   from: string
   to: string

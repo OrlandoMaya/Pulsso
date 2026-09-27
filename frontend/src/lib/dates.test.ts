@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eachDay, rangeTitle, toKey, visibleRange } from './dates'
+import { eachDay, rangeTitle, shiftDate, toKey, visibleRange } from './dates'
 
 describe('dates', () => {
   const sat26 = new Date(2026, 8, 26)
@@ -13,6 +13,13 @@ describe('dates', () => {
     const r = visibleRange('mes', sat26)
     expect([toKey(r.start), toKey(r.end)]).toEqual(['2026-08-31', '2026-10-04'])
     expect(eachDay(r.start, r.end)).toHaveLength(35)
+  })
+
+  it('día', () => {
+    const r = visibleRange('dia', sat26)
+    expect([toKey(r.start), toKey(r.end)]).toEqual(['2026-09-26', '2026-09-26'])
+    expect(toKey(shiftDate('dia', sat26, 1))).toBe('2026-09-27')
+    expect(rangeTitle('dia', sat26)).toBe('Sábado 26 de septiembre 2026')
   })
 
   it('títulos', () => {

@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { CalendarsModule } from './calendars/calendars.module';
 import { CompletionsModule } from './completions/completions.module';
+import { DayItemsModule } from './day-items/day-items.module';
 import { validateEnv } from './config/env.validation';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     CompletionsModule,
     AgendaModule,
+    DayItemsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -41,6 +41,7 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
+          { path: '/dia/:date?', element: <CalendarPage view="dia" /> },
           { path: '/semana/:date?', element: <CalendarPage view="semana" /> },
           { path: '/mes/:date?', element: <CalendarPage view="mes" /> },
           { path: '*', element: <Navigate to={`/semana/${toKey(new Date())}`} replace /> },

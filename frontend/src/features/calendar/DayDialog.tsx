@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarDays, Columns2, MoreHorizontal, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react'
+import { CalendarDays, Columns2, ListChecks, MoreHorizontal, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -29,16 +29,17 @@ interface Props {
   date: string | null
   onClose: () => void
   onShowWeek: (date: string) => void
+  onShowDay: (date: string) => void
 }
 
-export function DayDialog({ date, onClose, onShowWeek }: Props) {
+export function DayDialog({ date, onClose, onShowWeek, onShowDay }: Props) {
   return (
     <Dialog open={!!date} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90svh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[600px]"
       >
-        {date && <DayContent date={date} onClose={onClose} onShowWeek={onShowWeek} />}
+        {date && <DayContent date={date} onClose={onClose} onShowWeek={onShowWeek} onShowDay={onShowDay} />}
       </DialogContent>
     </Dialog>
   )
@@ -48,10 +49,12 @@ function DayContent({
   date,
   onClose,
   onShowWeek,
+  onShowDay,
 }: {
   date: string
   onClose: () => void
   onShowWeek: (d: string) => void
+  onShowDay: (d: string) => void
 }) {
   const { openEditor } = useCalendarActions()
   const day = useDay(date)
@@ -172,6 +175,10 @@ function DayContent({
         <Button variant="ghost" onClick={() => onShowWeek(date)}>
           <CalendarDays />
           <span className="max-sm:sr-only">Ver en semana</span>
+        </Button>
+        <Button variant="ghost" onClick={() => onShowDay(date)}>
+          <ListChecks />
+          <span className="max-sm:sr-only">Abrir día</span>
         </Button>
         <div className="flex-1" />
         <Button variant="outline" onClick={onClose}>

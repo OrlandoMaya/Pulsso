@@ -12,6 +12,7 @@ import { useAgenda } from './queries'
 import { MobileSidebar, Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { WeekView } from './week/WeekView'
+import { DayView } from '../day/DayView'
 
 export function CalendarPage({ view }: { view: View }) {
   const nav = useCalendarNav(view)
@@ -49,6 +50,8 @@ export function CalendarPage({ view }: { view: View }) {
                 </Button>
               </div>
             </div>
+          ) : view === 'dia' ? (
+            <DayView date={nav.date} agenda={days.get(toKey(nav.date))} />
           ) : view === 'semana' ? (
             <WeekView start={start} end={end} days={days} focus={nav.date} />
           ) : (
@@ -80,6 +83,7 @@ export function CalendarPage({ view }: { view: View }) {
         date={nav.openDate}
         onClose={nav.closeDay}
         onShowWeek={(d) => nav.go('semana', new Date(`${d}T12:00`))}
+        onShowDay={(d) => nav.go('dia', new Date(`${d}T12:00`))}
       />
       <EditorDialog target={editor} onClose={() => setEditor(null)} />
     </CalendarActionsContext.Provider>

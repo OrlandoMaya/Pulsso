@@ -4,6 +4,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
+import { LogOut } from 'lucide-react'
+import { useAuth } from '../auth/auth-context'
+import { useTheme } from '../theme/theme-context'
+import { THEME_OPTIONS } from '../theme/theme-options'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { toKey, type View } from '@/lib/dates'
@@ -50,6 +54,7 @@ export function MobileSidebar({
           }}
           onAction={close}
         />
+        <MobileAccount />
       </SheetContent>
     </Sheet>
   )
@@ -99,7 +104,9 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
 
       <div className="flex flex-col gap-2.5 rounded-xl border bg-card px-4 py-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Recurrentes {view === 'semana' ? 'esta semana' : 'este mes'}</span>
+          <span className="text-sm font-medium">
+            Recurrentes {view === 'dia' ? 'del día' : view === 'semana' ? 'esta semana' : 'este mes'}
+          </span>
           <span className="font-mono text-[13px] text-muted-foreground">
             {totals ? `${totals.done}/${totals.total}` : '–'}
           </span>
@@ -125,5 +132,41 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
         ))}
       </div>
     </>
+  )
+}
+
+/** Cuenta, tema y cerrar sesión: en móvil viven en el menú lateral */
+function MobileAccount() {
+  const { user, logout } = useAuth()
+  const { theme, setTheme } = useTheme()
+  return (
+    <div className="mt-auto flex flex-col gap-3 border-t pt-4 sm:hidden">
+      <div className="flex flex-col px-1">
+        <span className="text-sm font-medium">{user?.name}</span>
+        <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+      </div>
+      <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+        {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={theme === value}
+            onClick={() => setTheme(value)}
+            className={cn(
+              'flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md text-xs font-medium text-muted-foreground',
+              theme === value && 'bg-background text-foreground shadow-sm dark:bg-input/40',
+            )}
+          >
+            <Icon className="size-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+      <Button variant="ghost" className="justify-start" onClick={logout}>
+        <LogOut />
+        Cerrar sesión
+      </Button>
+    </div>
   )
 }

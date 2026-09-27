@@ -94,6 +94,10 @@ pnpm format                                 # prettier
 ## Frontend
 
 - **Login / Crear cuenta** (`/login`): la sesión se guarda en el navegador; si el token vence, vuelve al login.
+- **Día** (`/dia/:fecha?lista=trabajo|personal`): lista de tareas del día con **descripción**, separada en
+  **Personal** y **Trabajo** (se recuerda la última usada). Ideal para los objetivos diarios: se tachan, se
+  editan en línea (título y descripción), se reordenan, se mueven a mañana o a la otra lista, y "Pasar
+  pendientes a mañana" lleva las no hechas al día siguiente. Al lado, la agenda del día (eventos y recurrentes).
 - **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Diario** con las tareas recurrentes tachables,
   eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
   un evento a esa hora; clic en el día abre su modal.
@@ -155,6 +159,11 @@ dentro de `frontend/`.
 | `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha |
 | `GET` | `/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD[&calendarIds=a,b]` | Días del rango (vista semana/mes, máx. 62 días) |
 | `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
+| `GET` | `/day-items?date=YYYY-MM-DD&list=personal\|work` | Lista de tareas del día (vista **Día**), en orden |
+| `POST` | `/day-items` | `{ date, list, title, description? }` agrega al final |
+| `PATCH` `DELETE` | `/day-items/:id` | Editar `{ title?, description?, done?, date?, list? }` (cambiar `date`/`list` la mueve) / borrar |
+| `PUT` | `/day-items/order` | `{ date, list, ids }` nuevo orden |
+| `POST` | `/day-items/carry-over` | `{ from, to, list }` pasa las pendientes a otro día |
 
 Cada día de la agenda tiene esta forma:
 

@@ -172,6 +172,78 @@ describe('Pulsso API (e2e)', () => {
     expect(dayB.body).toMatchObject({ tasks: [], events: [], progress: { done: 0, total: 0 } });
   });
 
+  it('lista del día: personal y trabajo separados, orden, mover y pasar pendientes', async () => {
+    const token = await register('d@pulsso.dev');
+    const other = await register('e@pulsso.dev');
+    const as = (r: request.Test, t = token) => r.auth(t, { type: 'bearer' });
+    const add = (title: string, list = 'work', description = '') =>
+      as(http.post('/api/day-items'))
+        .send({ date: '2026-09-26', list, title, description })
+        .expect(201)
+        .then((r) => r.body);
+
+    const a = await add('Revisar PRs', 'work', 'Los del sprint 12');
+    const b = await add('Preparar demo');
+    const c = await add('Llamar a mamá', 'personal');
+    expect(a).toMatchObject({ position: 0, done: false, description: 'Los del sprint 12' });
+    expect(b.position).toBe(1);
+
+    const work = await as(
+      http.get('/api/day-items').query({ date: '2026-09-26', list: 'work' }),
+    ).expect(200);
+    expect(work.body.map((i: { title: string }) => i.title)).toEqual([
+      'Revisar PRs',
+      'Preparar demo',
+    ]);
+    const personal = await as(
+      http.get('/api/day-items').query({ date: '2026-09-26', list: 'personal' }),
+    ).expect(200);
+    expect(personal.body.map((i: { id: string }) => i.id)).toEqual([c.id]);
+
+    // Reordenar
+    const reordered = await as(http.put('/api/day-items/order'))
+      .send({ date: '2026-09-26', list: 'work', ids: [b.id, a.id] })
+      .expect(200);
+    expect(reordered.body.map((i: { title: string }) => i.title)).toEqual([
+      'Preparar demo',
+      'Revisar PRs',
+    ]);
+    await as(http.put('/api/day-items/order'))
+      .send({ date: '2026-09-26', list: 'work', ids: [b.id] })
+      .expect(400);
+
+    // Tachar y editar
+    await as(http.patch(`/api/day-items/${b.id}`))
+      .send({ done: true, description: 'Listo' })
+      .expect(200);
+
+    // Pasar pendientes a mañana: solo "Revisar PRs"
+    const moved = await as(http.post('/api/day-items/carry-over'))
+      .send({ from: '2026-09-26', to: '2026-09-27', list: 'work' })
+      .expect(200);
+    expect(moved.body).toEqual({ moved: 1 });
+    const tomorrow = await as(
+      http.get('/api/day-items').query({ date: '2026-09-27', list: 'work' }),
+    ).expect(200);
+    expect(tomorrow.body.map((i: { title: string }) => i.title)).toEqual(['Revisar PRs']);
+
+    // Otra persona no ve ni toca nada
+    const foreign = await as(
+      http.get('/api/day-items').query({ date: '2026-09-26', list: 'work' }),
+      other,
+    ).expect(200);
+    expect(foreign.body).toEqual([]);
+    await as(http.patch(`/api/day-items/${a.id}`), other)
+      .send({ title: 'x' })
+      .expect(404);
+    await as(http.delete(`/api/day-items/${a.id}`), other).expect(404);
+
+    await as(http.delete(`/api/day-items/${c.id}`)).expect(204);
+    await as(http.post('/api/day-items'))
+      .send({ date: '2026-09-26', list: 'otra', title: 'x' })
+      .expect(400);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

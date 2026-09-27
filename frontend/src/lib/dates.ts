@@ -15,7 +15,7 @@ import { es } from 'date-fns/locale'
 
 export const WEEK_OPTS = { weekStartsOn: 1 as const, locale: es }
 
-export type View = 'semana' | 'mes'
+export type View = 'dia' | 'semana' | 'mes'
 
 /** "2026-09-21" */
 export const toKey = (d: Date) => format(d, 'yyyy-MM-dd')
@@ -45,6 +45,7 @@ export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /** Primer y último día visibles de la vista */
 export function visibleRange(view: View, date: Date) {
+  if (view === 'dia') return { start: date, end: date }
   if (view === 'semana') {
     return { start: startOfWeek(date, WEEK_OPTS), end: endOfWeek(date, WEEK_OPTS) }
   }
@@ -55,11 +56,13 @@ export function visibleRange(view: View, date: Date) {
 }
 
 export function shiftDate(view: View, date: Date, dir: 1 | -1) {
+  if (view === 'dia') return addDays(date, dir)
   return view === 'semana' ? addWeeks(date, dir) : addMonths(date, dir)
 }
 
 export function rangeTitle(view: View, date: Date) {
   if (view === 'mes') return capitalize(format(date, 'LLLL yyyy', { locale: es }))
+  if (view === 'dia') return capitalize(format(date, "EEEE d 'de' LLLL yyyy", { locale: es }))
   const { start, end } = visibleRange('semana', date)
   if (start.getMonth() === end.getMonth()) {
     return `${format(start, 'd')} – ${format(end, "d 'de' LLLL yyyy", { locale: es })}`

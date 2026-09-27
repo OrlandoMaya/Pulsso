@@ -61,7 +61,8 @@ export function MiniCalendar({ view, date, onSelect }: { view: View; date: Date;
                 'h-8 cursor-pointer rounded-md text-[13px] transition-colors hover:bg-accent',
                 !isSameMonth(d, month) && 'text-muted-foreground/60',
                 inRange && 'bg-muted',
-                isSameDay(d, date) && view === 'semana' && 'font-semibold',
+                isSameDay(d, date) && view !== 'mes' && 'font-semibold',
+                isSameDay(d, date) && view === 'dia' && !isToday(d) && 'bg-muted ring-1 ring-foreground/30',
                 isToday(d) && 'bg-primary font-semibold text-primary-foreground hover:bg-primary/90',
               )}
             >
