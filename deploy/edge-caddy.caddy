@@ -1,0 +1,12 @@
+# Pegar al final del Caddyfile del Caddy que ya existe en el servidor (opción C).
+# Ese Caddy pone el HTTPS de estos dominios igual que con los suyos.
+
+calendar.pulsso.online {
+	encode zstd gzip
+	reverse_proxy pulsso-frontend:80
+}
+
+calendar-api.pulsso.online {
+	encode zstd gzip
+	reverse_proxy pulsso-backend:4000
+}

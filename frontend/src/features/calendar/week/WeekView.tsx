@@ -199,8 +199,15 @@ export function WeekView({
                   className={cn('relative border-l', i >= 5 && 'bg-muted/30')}
                   onClick={(e) => createAt(d, e)}
                 >
-                  {layoutOverlaps(events).map(({ item, lane, lanes }) => (
-                    <EventBlock key={item.sourceId + item.start} event={item} date={key} lane={lane} lanes={lanes} />
+                  {layoutOverlaps(events).map(({ item, lane, lanes, depth }) => (
+                    <EventBlock
+                      key={item.sourceId + item.start}
+                      event={item}
+                      date={key}
+                      lane={lane}
+                      lanes={lanes}
+                      depth={depth}
+                    />
                   ))}
                   {isToday(d) && (
                     <div
@@ -221,7 +228,24 @@ export function WeekView({
   )
 }
 
-function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: string; lane: number; lanes: number }) {
+/** Ancho libre a la derecha de cada día para crear encima de otro evento */
+const FREE_STRIP = 14
+/** Corrimiento de un evento que va encima de otro más largo */
+const NEST_INDENT = 10
+
+function EventBlock({
+  event,
+  date,
+  lane,
+  lanes,
+  depth,
+}: {
+  event: AgendaEvent
+  date: string
+  lane: number
+  lanes: number
+  depth: number
+}) {
   const { openEditor } = useCalendarActions()
   const c = COLORS[event.color]
   // Un evento que pasa de medianoche se recorta al final del día
@@ -234,9 +258,9 @@ function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: st
   return (
     <div
       className={cn(
-        'absolute z-10 flex items-start gap-1 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 shadow-[0_0_0_1px_var(--background)]',
+        // Fondo opaco: un evento encima de otro no se mezcla con el de abajo
+        'absolute z-10 flex items-start gap-1 overflow-hidden rounded-md border-l-[3px] bg-background px-1.5 py-1 shadow-[0_0_0_1px_var(--background)]',
         compact && 'items-center py-0',
-        c.soft,
         c.text,
         c.bar,
         event.done && 'opacity-55',
@@ -244,15 +268,19 @@ function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: st
       style={{
         top: (startMin / 60) * HOUR + 1,
         height,
-        left: `calc(${(lane * 100) / lanes}% + 2px)`,
-        width: `calc(${100 / lanes}% - 5px)`,
+        // Queda libre una franja a la derecha: clic ahí crea otro evento a esa hora
+        // Encima de uno más largo: corrido a la derecha y por delante
+        left: `calc(${depth * NEST_INDENT}px + (100% - ${FREE_STRIP + depth * NEST_INDENT}px) * ${lane / lanes} + 2px)`,
+        width: `calc((100% - ${FREE_STRIP + depth * NEST_INDENT}px) / ${lanes} - 3px)`,
+        zIndex: 10 + depth,
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      <span aria-hidden className={cn('pointer-events-none absolute inset-0', c.soft)} />
       <button
         type="button"
         title={`${event.title} · ${range}`}
-        className="flex h-full min-w-0 flex-1 cursor-pointer flex-col items-stretch justify-start text-left"
+        className="relative flex h-full min-w-0 flex-1 cursor-pointer flex-col items-stretch justify-start text-left"
         onClick={() => openEditor({ mode: 'edit', kind: 'event', id: event.sourceId, date })}
       >
         <span
