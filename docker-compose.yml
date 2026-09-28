@@ -4,13 +4,17 @@
 #   docker compose up -d --build
 #   → https://calendar.pulsso.online (app) y https://calendar-api.pulsso.online (API)
 services:
-  # Entrada pública: HTTPS en 80/443 hacia la app y la API
+  # Entrada pública: HTTPS en 80/443 hacia la app y la API.
+  # Solo arranca con el perfil "caddy" (COMPOSE_PROFILES=caddy en .env). Si el servidor ya tiene
+  # un nginx en el 80, quita ese perfil y usa deploy/nginx-pulsso.conf en ese nginx.
   caddy:
     image: caddy:2-alpine
+    profiles: [caddy]
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      # BIND_IP: en un servidor con varias IP, escuchar solo en la de Pulsso
+      - "${BIND_IP:-0.0.0.0}:80:80"
+      - "${BIND_IP:-0.0.0.0}:443:443"
+      - "${BIND_IP:-0.0.0.0}:443:443/udp"
     environment:
       WEB_DOMAIN: ${WEB_DOMAIN:?Falta WEB_DOMAIN en .env}
       API_DOMAIN: ${API_DOMAIN:?Falta API_DOMAIN en .env}
@@ -32,11 +36,11 @@ services:
     env_file: backend/.env
     environment:
       PORT: "4000"
-      # Detrás de Caddy: la IP real del cliente viene en X-Forwarded-For (límite de intentos de login)
+      # Detrás de Caddy o nginx: la IP real del cliente viene en X-Forwarded-For (límite de intentos de login)
       TRUST_PROXY: "1"
       # La app llama a la API desde su propio dominio
       CORS_ORIGIN: https://${WEB_DOMAIN}
-    # Sin puerto público: el mundo entra por Caddy. Desde el servidor: curl localhost:4000/api/health
+    # Sin puerto público: el mundo entra por Caddy o nginx. Desde el servidor: curl localhost:4000/api/health
     ports:
       - "127.0.0.1:4000:4000"
     restart: unless-stopped
@@ -50,6 +54,9 @@ services:
         VITE_API_URL: https://${API_DOMAIN}
     environment:
       API_UPSTREAM: http://backend:4000
+    # Para un nginx del servidor (sin Caddy): solo desde el propio servidor
+    ports:
+      - "127.0.0.1:4040:80"
     depends_on:
       backend:
         condition: service_healthy

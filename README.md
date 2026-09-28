@@ -83,6 +83,14 @@ docker compose up -d --build           # → https://calendar.pulsso.online
 4. `docker compose up -d --build` y mira cómo saca los certificados: `docker compose logs -f caddy`.
 5. Prueba `https://calendar-api.pulsso.online/api/health` (→ `{"status":"ok"}`) y abre `https://calendar.pulsso.online`.
 
+**Si el servidor ya tiene otro proyecto en el puerto 80:**
+
+- **Con un nginx instalado en el servidor** (`sudo ss -tlnp | grep ':80 '` muestra `nginx`): borra `COMPOSE_PROFILES=caddy`
+  de `.env` para que Caddy no arranque y agrega `deploy/nginx-pulsso.conf` a ese nginx (los pasos están en el archivo;
+  el HTTPS lo pone `certbot`). Nginx separa los sitios por dominio, así que el otro proyecto sigue igual.
+- **Con varias IP en el servidor** y el otro proyecto escuchando solo en la suya: pon `BIND_IP=<IP de Pulsso>` en `.env`
+  y Caddy usa el 80/443 de esa IP.
+
 Construir por separado:
 
 ```bash
