@@ -88,6 +88,10 @@ docker compose up -d --build           # → https://calendar.pulsso.online
 - **Con un nginx instalado en el servidor** (`sudo ss -tlnp | grep ':80 '` muestra `nginx`): borra `COMPOSE_PROFILES=caddy`
   de `.env` para que Caddy no arranque y agrega `deploy/nginx-pulsso.conf` a ese nginx (los pasos están en el archivo;
   el HTTPS lo pone `certbot`). Nginx separa los sitios por dominio, así que el otro proyecto sigue igual.
+- **Con un Caddy de otro proyecto en el 80/443** (p. ej. un contenedor `edge-caddy`): en `.env` borra
+  `COMPOSE_PROFILES=caddy` y activa `COMPOSE_FILE=docker-compose.yml:docker-compose.edge.yml` con `EDGE_NETWORK` = la red
+  de ese Caddy (`docker inspect edge-caddy -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'`). Luego pega
+  `deploy/edge-caddy.caddy` en su Caddyfile y recárgalo. Él pone el HTTPS de los dos dominios.
 - **Con varias IP en el servidor** y el otro proyecto escuchando solo en la suya: pon `BIND_IP=<IP de Pulsso>` en `.env`
   y Caddy usa el 80/443 de esa IP.
 

@@ -1,0 +1,24 @@
+# Opción C: el servidor ya tiene un Caddy en otro proyecto (p. ej. "edge-caddy") con el 80/443.
+# Une el frontend y el backend a la red de ese Caddy para que los alcance por nombre:
+#   pulsso-frontend:80 y pulsso-backend:4000 (ver deploy/edge-caddy.caddy).
+#
+# En .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.edge.yml
+#   EDGE_NETWORK=<red del Caddy existente>
+services:
+  backend:
+    networks:
+      default:
+      edge:
+        aliases: [pulsso-backend]
+
+  frontend:
+    networks:
+      default:
+      edge:
+        aliases: [pulsso-frontend]
+
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:?Falta EDGE_NETWORK en .env (la red del Caddy existente)}
