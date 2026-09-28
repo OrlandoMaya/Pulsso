@@ -1,0 +1,17 @@
+# Caddy pone HTTPS solo (certificados de Let's Encrypt que renueva él mismo).
+# Los dominios vienen de .env en la raíz (WEB_DOMAIN, API_DOMAIN, ACME_EMAIL).
+{
+	email {$ACME_EMAIL}
+}
+
+# App: nginx del frontend sirve React
+{$WEB_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:80
+}
+
+# API de Nest
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:4000
+}

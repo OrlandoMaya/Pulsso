@@ -57,21 +57,31 @@ desde la raíz del repo porque el lockfile de pnpm es compartido.
 
 ```bash
 cp backend/.env.example backend/.env   # MONGODB_URI de Atlas + JWT_SECRET
-docker compose up --build              # → http://localhost:4040
+cp .env.example .env                   # WEB_DOMAIN, API_DOMAIN y ACME_EMAIL
+docker compose up -d --build           # → https://calendar.pulsso.online
 ```
 
+- **caddy** (`deploy/Caddyfile`): la única entrada pública, en los puertos 80 y 443. Pone HTTPS solo, con certificados
+  de Let's Encrypt que renueva él mismo, y reparte: `WEB_DOMAIN` → frontend, `API_DOMAIN` → backend.
 - **backend** (`backend/Dockerfile`): Node 22 Alpine en varias etapas (compila con dependencias de desarrollo
   y la imagen final lleva solo las de producción). Corre como usuario `node`, con *healthcheck* en
   `/api/health`. Las credenciales llegan por variables de entorno (`env_file`), nunca dentro de la imagen.
-  No se publica al exterior: solo nginx lo alcanza por la red interna de compose.
-- **frontend** (`frontend/Dockerfile`): compila con Vite y sirve con nginx. `nginx.conf.template` atiende las
-  rutas de React, cachea `/assets` y reenvía `/api` al backend (`API_UPSTREAM`, por defecto
-  `http://backend:4000`), así que no hace falta CORS.
-- `TRUST_PROXY=1` (ya puesto en compose) hace que la API use la IP real del cliente para el límite de intentos
-  de login en lugar de la de nginx.
-- Para que la app llame a una API en otro dominio: `docker build -f frontend/Dockerfile --build-arg
-  VITE_API_URL=https://api.midominio.com .`
+  Solo escucha en `127.0.0.1:4000` del servidor; desde afuera se entra por Caddy. `CORS_ORIGIN` se arma con
+  `WEB_DOMAIN` y `TRUST_PROXY=1` hace que use la IP real del cliente para el límite de intentos de login.
+- **frontend** (`frontend/Dockerfile`): compila con Vite apuntando a `https://API_DOMAIN` (`VITE_API_URL`) y sirve
+  con nginx (`nginx.conf.template`: rutas de React y caché de `/assets`).
 - En Atlas, agrega en **Network Access** la IP pública del servidor donde corra el contenedor.
+
+### Publicar con dominio (calendar.pulsso.online y calendar-api.pulsso.online)
+
+1. En el DNS de `pulsso.online` crea dos registros **A**, `calendar` y `calendar-api`, con la IP del servidor.
+   Si usas Cloudflare, déjalos en "solo DNS" (nube gris) al menos hasta que Caddy saque los certificados.
+   Comprueba con `dig +short calendar.pulsso.online` que ya responden la IP.
+2. En el servidor, deja libres los puertos 80 y 443 (`sudo ss -tlnp | grep -E ':(80|443) '` no debe mostrar nada) y
+   ábrelos en el firewall: `sudo ufw allow 80,443/tcp` (y en el panel del proveedor si tiene firewall propio).
+3. `git pull`, `cp .env.example .env` y pon tu correo en `ACME_EMAIL`.
+4. `docker compose up -d --build` y mira cómo saca los certificados: `docker compose logs -f caddy`.
+5. Prueba `https://calendar-api.pulsso.online/api/health` (→ `{"status":"ok"}`) y abre `https://calendar.pulsso.online`.
 
 Construir por separado:
 
