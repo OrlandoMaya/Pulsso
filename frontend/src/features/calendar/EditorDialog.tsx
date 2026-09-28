@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { differenceInCalendarDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarDays, ListChecks, Loader2, Repeat, Trash2, CircleDot } from 'lucide-react'
+import { CalendarDays, CalendarPlus, ListChecks, Loader2, Repeat, Trash2, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -35,7 +35,7 @@ import { lastDayKey } from '@/lib/multiday'
 import { WEEKDAYS, weekdayOf } from '@/lib/recurrence'
 import type { CalendarEvent, Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import type { EditorTarget } from './editor-context'
+import { useCalendarActions, type EditorTarget } from './editor-context'
 import { useCalendars, useDeleteItem, useEvent, useSaveEvent, useSaveTask, useTask } from './queries'
 
 const schema = z
@@ -199,6 +199,7 @@ function EditorForm({
   const saveEvent = useSaveEvent()
   const saveTask = useSaveTask()
   const remove = useDeleteItem()
+  const { openEditor } = useCalendarActions()
   const editing = target.mode === 'edit'
 
   const form = useForm<FormValues>({
@@ -252,7 +253,10 @@ function EditorForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <DialogHeader>
         <DialogTitle>
-          {editing ? 'Editar' : target.link ? 'Programar como' : 'Nuevo:'} {titleFor(kind, recurrence).toLowerCase()}
+          {editing
+            ? // Deja claro que se modifica lo que ya existe
+              `Editar ${kind === 'event' ? 'evento' : 'tarea'}: ${event?.title ?? task?.title ?? ''}`
+            : `${target.link ? 'Programar como' : 'Nuevo:'} ${titleFor(kind, recurrence).toLowerCase()}`}
         </DialogTitle>
         <DialogDescription>
           {target.mode === 'create' && target.link
@@ -449,6 +453,27 @@ function EditorForm({
         <Field label="Descripción" htmlFor="description">
           <Textarea id="description" rows={2} placeholder="Pasos, notas… (opcional)" {...register('description')} />
         </Field>
+      )}
+
+      {/* Editar cambia este evento; para poner otro a la misma hora hay que crearlo aparte */}
+      {editing && event && (
+        <button
+          type="button"
+          onClick={() =>
+            openEditor({
+              mode: 'create',
+              kind: 'event',
+              recurrence: 'normal',
+              date: target.date,
+              time: event.allDay ? undefined : event.start.slice(11, 16),
+              allDay: event.allDay,
+            })
+          }
+          className="-mt-1 flex w-fit cursor-pointer items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <CalendarPlus className="size-4" />
+          Crear otro evento a esta misma hora
+        </button>
       )}
 
       <DialogFooter className="items-center gap-2 sm:justify-between">

@@ -221,6 +221,9 @@ export function WeekView({
   )
 }
 
+/** Ancho libre a la derecha de cada día para crear encima de otro evento */
+const FREE_STRIP = 14
+
 function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: string; lane: number; lanes: number }) {
   const { openEditor } = useCalendarActions()
   const c = COLORS[event.color]
@@ -244,8 +247,9 @@ function EventBlock({ event, date, lane, lanes }: { event: AgendaEvent; date: st
       style={{
         top: (startMin / 60) * HOUR + 1,
         height,
-        left: `calc(${(lane * 100) / lanes}% + 2px)`,
-        width: `calc(${100 / lanes}% - 5px)`,
+        // Queda libre una franja a la derecha: clic ahí crea otro evento a esa hora
+        left: `calc((100% - ${FREE_STRIP}px) * ${lane / lanes} + 2px)`,
+        width: `calc((100% - ${FREE_STRIP}px) / ${lanes} - 3px)`,
       }}
       onClick={(e) => e.stopPropagation()}
     >
