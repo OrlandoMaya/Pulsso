@@ -10,6 +10,7 @@ import { useCalendarActions } from '../editor-context'
 import { ItemCheckbox } from '../ItemCheckbox'
 import { SpecialChip } from '../SpecialChip'
 import { isBanner, segmentOn } from '@/lib/multiday'
+import { SubtaskCount } from '../../tasks/SubtaskCount'
 
 const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const MAX_TASKS = 3
@@ -163,6 +164,7 @@ function DayCell({
         >
           <ItemCheckbox item={t} date={key} className="size-3.5" />
           <span className={cn('truncate', t.done && 'text-muted-foreground line-through')}>{t.title}</span>
+          <SubtaskCount task={t} />
         </label>
       ))}
 

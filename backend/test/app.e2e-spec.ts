@@ -501,6 +501,92 @@ describe('Pulsso API (e2e)', () => {
       .expect(404);
   });
 
+  it('subtareas: se tachan por día y tachan la tarea cuando están todas', async () => {
+    const token = await register('s@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const cal = (await as(http.get('/api/calendars'))).body[0].id;
+
+    const task = await as(http.post('/api/tasks'))
+      .send({
+        calendarId: cal,
+        title: 'Rutina',
+        startDate: '2026-10-01',
+        rrule: 'FREQ=DAILY',
+        subtasks: [
+          { id: 's1', title: 'Estirar' },
+          { id: 's2', title: 'Correr' },
+        ],
+      })
+      .expect(201);
+    const id = task.body.id;
+    const sub = (subtaskId: string, date: string, done: boolean) =>
+      as(http.put('/api/completions/subtask')).send({ taskId: id, subtaskId, date, done });
+
+    expect((await sub('s1', '2026-10-01', true).expect(200)).body).toMatchObject({
+      subtasksDone: ['s1'],
+      done: false,
+    });
+    expect((await sub('s2', '2026-10-01', true).expect(200)).body.done).toBe(true);
+    await sub('nada', '2026-10-01', true).expect(400);
+    await sub('s1', '2026-09-30', true).expect(400); // aún no empieza
+
+    const days = await as(
+      http.get('/api/agenda').query({ from: '2026-10-01', to: '2026-10-02' }),
+    ).expect(200);
+    const [d1, d2] = days.body.days.map((d: { tasks: unknown[] }) => d.tasks[0]);
+    expect(d1).toMatchObject({
+      done: true,
+      subtasks: [
+        { id: 's1', done: true },
+        { id: 's2', done: true },
+      ],
+    });
+    // Otro día empieza de cero
+    expect(d2).toMatchObject({ done: false, subtasks: [{ done: false }, { done: false }] });
+
+    // Destachar una subtarea destacha la tarea
+    expect((await sub('s2', '2026-10-01', false).expect(200)).body.done).toBe(false);
+
+    // Tachar la tarea tacha todas sus subtareas; destacharla las destacha
+    await as(http.put('/api/completions'))
+      .send({ sourceType: 'task', sourceId: id, date: '2026-10-02', done: true })
+      .expect(200);
+    const day2 = await as(http.get('/api/agenda/day/2026-10-02')).expect(200);
+    expect(day2.body.tasks[0].subtasks.every((s: { done: boolean }) => s.done)).toBe(true);
+
+    // Agregar una a una tarea ya hecha: ese día cuenta como hecha
+    await as(http.patch(`/api/tasks/${id}`))
+      .send({
+        subtasks: [
+          { id: 's1', title: 'Estirar' },
+          { id: 's2', title: 'Correr' },
+          { id: 's3', title: 'Hidratarse' },
+        ],
+      })
+      .expect(200);
+    const again = await as(http.get('/api/agenda/day/2026-10-02')).expect(200);
+    expect(again.body.tasks[0]).toMatchObject({
+      done: true,
+      subtasks: [{ done: true }, { done: true }, { done: true }],
+    });
+
+    // Quitar una subtarea la saca también de lo tachado
+    await as(http.patch(`/api/tasks/${id}`))
+      .send({ subtasks: [{ id: 's2', title: 'Correr 5 km' }] })
+      .expect(200);
+    const day1 = await as(http.get('/api/agenda/day/2026-10-01')).expect(200);
+    expect(day1.body.tasks[0].subtasks).toEqual([{ id: 's2', title: 'Correr 5 km', done: false }]);
+
+    await as(http.patch(`/api/tasks/${id}`))
+      .send({
+        subtasks: [
+          { id: 'x', title: 'a' },
+          { id: 'x', title: 'b' },
+        ],
+      })
+      .expect(400);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

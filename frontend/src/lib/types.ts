@@ -42,6 +42,13 @@ export interface Task {
   position?: number
   projectId?: string | null
   nodeId?: string | null
+  subtasks?: Subtask[]
+}
+
+/** Paso de una tarea */
+export interface Subtask {
+  id: string
+  title: string
 }
 
 export interface AgendaTask {
@@ -55,6 +62,8 @@ export interface AgendaTask {
   recurring: boolean
   position: number
   done: boolean
+  /** Subtareas con su estado ese día */
+  subtasks: (Subtask & { done: boolean })[]
   /** Viene de un proyecto */
   project?: ProjectRef | null
 }

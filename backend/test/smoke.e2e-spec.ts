@@ -32,6 +32,7 @@ describe('Pulsso API (smoke, sin Mongo)', () => {
     ['post', '/api/calendars'],
     ['get', '/api/calendars/507f1f77bcf86cd799439011/usage'],
     ['get', '/api/general-tasks'],
+    ['put', '/api/completions/subtask'],
     ['put', '/api/general-tasks/507f1f77bcf86cd799439011/diagram'],
   ] as const)('%s %s exige sesión', (method, url) =>
     request(app.getHttpServer())[method](url).expect(401),

@@ -5,12 +5,16 @@ import { TasksModule } from '../tasks/tasks.module';
 import { CompletionsController } from './completions.controller';
 import { CompletionsService } from './completions.service';
 import { Completion, CompletionSchema } from './schemas/completion.schema';
+import { SubtaskCompletion, SubtaskCompletionSchema } from './schemas/subtask-completion.schema';
 
 @Module({
   imports: [
     EventsModule,
     TasksModule,
-    MongooseModule.forFeature([{ name: Completion.name, schema: CompletionSchema }]),
+    MongooseModule.forFeature([
+      { name: Completion.name, schema: CompletionSchema },
+      { name: SubtaskCompletion.name, schema: SubtaskCompletionSchema },
+    ]),
   ],
   controllers: [CompletionsController],
   providers: [CompletionsService],

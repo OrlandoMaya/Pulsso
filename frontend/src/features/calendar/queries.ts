@@ -106,11 +106,13 @@ interface ToggleInput {
   done: boolean
 }
 
-/** Marca un ítem en un día y recalcula el avance */
+/** Marca un ítem en un día y recalcula el avance (tachar una tarea tacha sus subtareas) */
 function applyToggle(day: AgendaDay, t: ToggleInput): AgendaDay {
   if (day.date !== t.date) return day
   const tasks = day.tasks.map((x) =>
-    t.sourceType === 'task' && x.sourceId === t.sourceId ? { ...x, done: t.done } : x,
+    t.sourceType === 'task' && x.sourceId === t.sourceId
+      ? { ...x, done: t.done, subtasks: x.subtasks.map((s) => ({ ...s, done: t.done })) }
+      : x,
   )
   const events = day.events.map((x) =>
     t.sourceType === 'event' && x.sourceId === t.sourceId ? { ...x, done: t.done } : x,
@@ -220,7 +222,7 @@ export function usePatchTask() {
       patch,
     }: {
       id: string
-      patch: Partial<Pick<Task, 'title' | 'description' | 'calendarId' | 'startDate'>>
+      patch: Partial<Pick<Task, 'title' | 'description' | 'calendarId' | 'startDate' | 'subtasks'>>
     }) => api<Task>(`/tasks/${id}`, { method: 'PATCH', body: patch }),
     onMutate: async ({ id, patch }) => {
       const snap = await snapshotAgenda(qc)
@@ -237,6 +239,14 @@ export function usePatchTask() {
                   ...(patch.title !== undefined && { title: patch.title }),
                   ...(patch.description !== undefined && { description: patch.description }),
                   ...(patch.calendarId !== undefined && { calendarId: patch.calendarId }),
+                  ...(patch.subtasks !== undefined && {
+                    // Las que ya estaban conservan si están tachadas
+                    subtasks: patch.subtasks.map((st) => ({
+                      ...st,
+                      // Nueva en una tarea ya hecha: cuenta como hecha
+                      done: t.subtasks.find((x) => x.id === st.id)?.done ?? t.done,
+                    })),
+                  }),
                 }
               : t,
           ),
@@ -291,5 +301,32 @@ export function useCarryOverTasks() {
       return refreshAgenda(qc)
     },
     onError,
+  })
+}
+
+/** Tachar una subtarea en un día (optimista): la tarea queda hecha si están todas */
+export function useToggleSubtask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { taskId: string; subtaskId: string; date: string; done: boolean }) =>
+      api<{ subtasksDone: string[]; done: boolean }>('/completions/subtask', { method: 'PUT', body: v }),
+    onMutate: async (v) => {
+      const snap = await snapshotAgenda(qc)
+      patchCachedDays(qc, (d) => {
+        if (d.date !== v.date) return d
+        const tasks = d.tasks.map((t) => {
+          if (t.sourceId !== v.taskId) return t
+          const subtasks = t.subtasks.map((s) => (s.id === v.subtaskId ? { ...s, done: v.done } : s))
+          return { ...t, subtasks, done: subtasks.every((s) => s.done) }
+        })
+        return { ...d, tasks, progress: { done: tasks.filter((t) => t.done).length, total: tasks.length } }
+      })
+      return { snap }
+    },
+    onError: (e, _v, ctx) => {
+      restore(qc, ctx?.snap)
+      onError(e)
+    },
+    onSettled: () => refreshAgenda(qc),
   })
 }

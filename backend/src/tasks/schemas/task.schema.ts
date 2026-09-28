@@ -2,6 +2,18 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { toJSONOptions } from '../../common/utils/serialize';
 
+/** Paso de una tarea; se tacha por día como la tarea */
+@Schema({ _id: false })
+export class Subtask {
+  /** Id que genera el cliente */
+  @Prop({ required: true })
+  id: string;
+
+  @Prop({ required: true, trim: true, maxlength: 120 })
+  title: string;
+}
+const SubtaskSchema = SchemaFactory.createForClass(Subtask);
+
 /**
  * Tarea: algo por hacer que se tacha. Normal = solo un día (RRULE con COUNT=1);
  * recurrente = se repite. Es la misma en la vista Día, la semana, el mes y el modal.
@@ -46,6 +58,10 @@ export class Task {
 
   @Prop({ type: [String], default: [] })
   exdates: string[];
+
+  /** Subtareas en orden */
+  @Prop({ type: [SubtaskSchema], default: [] })
+  subtasks: Subtask[];
 
   /** Si viene de un proyecto: el proyecto (tarea general) y el elemento del diagrama */
   @Prop({ type: SchemaTypes.ObjectId, default: null, index: { sparse: true } })

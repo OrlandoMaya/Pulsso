@@ -1,6 +1,7 @@
 import { model, Schema } from 'mongoose';
 import { CalendarSchema } from './calendars/schemas/calendar.schema';
 import { CompletionSchema } from './completions/schemas/completion.schema';
+import { SubtaskCompletionSchema } from './completions/schemas/subtask-completion.schema';
 import { DayItemSchema } from './day-items/schemas/day-item.schema';
 import { EventSchema } from './events/schemas/event.schema';
 import { GeneralTaskSchema } from './general-tasks/schemas/general-task.schema';
@@ -18,6 +19,7 @@ const refs: [string, Schema, string[]][] = [
   ['GeneralTask', GeneralTaskSchema, ['userId', 'calendarId']],
   ['DayItem', DayItemSchema, ['userId']],
   ['Completion', CompletionSchema, ['userId', 'sourceId']],
+  ['SubtaskCompletion', SubtaskCompletionSchema, ['userId', 'taskId']],
 ];
 
 describe('esquemas: campos de referencia', () => {

@@ -34,6 +34,7 @@ export interface EventFormValues extends RepeatValues {
 export interface TaskFormValues extends RepeatValues {
   title: string
   description?: string
+  subtasks?: { id: string; title: string }[]
   calendarId: string
   date: string
 }
@@ -67,6 +68,8 @@ export function toTaskPayload(v: TaskFormValues): TaskPayload {
   return {
     title: v.title.trim(),
     description: v.description?.trim() ?? '',
+    // Las vacías no se guardan
+    subtasks: (v.subtasks ?? []).map((s) => ({ id: s.id, title: s.title.trim() })).filter((s) => s.title),
     calendarId: v.calendarId,
     startDate: v.date,
     rrule: ruleOf(v, v.date) ?? ONE_OFF_RRULE,
