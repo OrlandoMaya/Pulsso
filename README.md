@@ -121,6 +121,9 @@ pnpm format                                 # prettier
   Se tachan, se editan en línea (título y descripción), se reordenan **arrastrando** desde el asa ⋮⋮, se pasan a
   mañana o a otra categoría, y "Pasar pendientes a mañana" mueve las tareas normales no hechas al día siguiente.
   Al lado, los eventos del día.
+- **Subtareas**: cada tarea puede tener pasos. Se agregan en el editor o con "Agregar subtarea" en la tarjeta, se
+  editan y quitan ahí mismo, y se tachan por día (en una recurrente, cada día empieza de cero). Al tachar todas, la
+  tarea se tacha sola; tachar la tarea tacha todas. La semana y el mes muestran cuántas van (2/3).
 - **Semana** (`/semana/:fecha`): rejilla de 24 h, franja **Tareas** con las tareas del día para tachar,
   eventos que coinciden en hora en columnas lado a lado y línea de la hora actual. Clic en un hueco crea
   un evento a esa hora; clic en el día abre su modal.
@@ -156,6 +159,12 @@ pnpm format                                 # prettier
   - Una actividad se **programa como tarea o como evento** desde su panel: abre el mismo editor del calendario y queda
     vinculada. En el calendario la tarea muestra el nombre del proyecto; tacharla allí la marca hecha en el diagrama (y
     al revés). Borrar la actividad o el proyecto deja lo programado en el calendario, sin vínculo.
+- **Finanzas** (`/finanzas`, botón **Finanzas** arriba): en la vista Día y en el modal del día hay una sección
+  **Gastos** para registrar lo gastado (nombre, monto y descripción opcional; el monto acepta `12.50`, `12,50` o
+  `$1,234.50`). Se editan ahí mismo y el mes muestra lo gastado en cada día. La vista Finanzas, por mes, tiene el total
+  gastado, el promedio por día, el día con más gasto, el **balance total** (todo lo registrado), una gráfica de columnas
+  con lo gastado por día (al pasar el mouse muestra el total; clic abre el día; también se ve como tabla) y la lista de
+  gastos del mes por día, con su formulario para agregar en cualquier fecha.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
   avisa cuántos eventos, tareas y proyectos se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.
@@ -203,10 +212,14 @@ dentro de `frontend/`.
 | `POST` | `/events` | `{ calendarId, title, start, end, notes?, rrule?, checkable?, allDay? }` (`allDay`: días completos de la fecha de `start` a la de `end`, ambos incluidos; se guarda hasta las 00:00 del día siguiente. Máx. 366 días) |
 | `GET` `PATCH` `DELETE` | `/events/:id` | Ver / editar (`rrule: null` quita la repetición) / borrar |
 | `POST` | `/events/:id/exdates` | `{ date }` borra solo esa ocurrencia |
-| `GET` `POST` | `/tasks` | Tareas `{ calendarId, title, description?, startDate, rrule }` (normal = `FREQ=DAILY;COUNT=1`) |
+| `GET` `POST` | `/tasks` | Tareas `{ calendarId, title, description?, startDate, rrule, subtasks?: [{ id, title }] }` (normal = `FREQ=DAILY;COUNT=1`) |
 | `PATCH` `DELETE` | `/tasks/:id` | Editar / borrar |
 | `POST` | `/tasks/:id/exdates` | `{ date }` quita la tarea solo ese día |
-| `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha |
+| `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha (una tarea tacha también sus subtareas) |
+| `PUT` | `/completions/subtask` | `{ taskId, subtaskId, date, done }` tacha una subtarea; responde `{ subtasksDone, done }` |
+| `GET` `POST` | `/expenses?from=&to=` | Gastos del rango (máx. 400 días) / nuevo `{ date, title, description?, amount }` |
+| `PATCH` `DELETE` | `/expenses/:id` | Editar / borrar un gasto |
+| `GET` | `/expenses/summary?from=&to=` | `{ total, count, dailyAverage, max, days: [{ date, total, count }], allTime }` |
 | `GET` | `/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD[&calendarIds=a,b]` | Días del rango (vista semana/mes, máx. 62 días) |
 | `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
 | `PUT` | `/tasks/order` | `{ ids }` nuevo orden de las tareas |

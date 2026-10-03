@@ -9,8 +9,20 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { IsDateKey, IsRRule } from '../../recurrence/validators';
+
+export class SubtaskDto {
+  @Matches(/^[A-Za-z0-9_-]{1,40}$/)
+  id: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  title: string;
+}
 
 export class CreateTaskDto {
   @IsMongoId()
@@ -31,6 +43,13 @@ export class CreateTaskDto {
 
   @IsRRule()
   rrule: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => SubtaskDto)
+  subtasks?: SubtaskDto[];
 
   /** Programar un elemento de un proyecto: queda vinculado a él */
   @IsOptional()

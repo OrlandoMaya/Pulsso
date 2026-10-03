@@ -1,8 +1,10 @@
 import { model, Schema } from 'mongoose';
 import { CalendarSchema } from './calendars/schemas/calendar.schema';
 import { CompletionSchema } from './completions/schemas/completion.schema';
+import { SubtaskCompletionSchema } from './completions/schemas/subtask-completion.schema';
 import { DayItemSchema } from './day-items/schemas/day-item.schema';
 import { EventSchema } from './events/schemas/event.schema';
+import { ExpenseSchema } from './expenses/schemas/expense.schema';
 import { GeneralTaskSchema } from './general-tasks/schemas/general-task.schema';
 import { TaskSchema } from './tasks/schemas/task.schema';
 
@@ -16,8 +18,10 @@ const refs: [string, Schema, string[]][] = [
   ['Event', EventSchema, ['userId', 'calendarId', 'projectId']],
   ['Task', TaskSchema, ['userId', 'calendarId', 'projectId']],
   ['GeneralTask', GeneralTaskSchema, ['userId', 'calendarId']],
+  ['Expense', ExpenseSchema, ['userId']],
   ['DayItem', DayItemSchema, ['userId']],
   ['Completion', CompletionSchema, ['userId', 'sourceId']],
+  ['SubtaskCompletion', SubtaskCompletionSchema, ['userId', 'taskId']],
 ];
 
 describe('esquemas: campos de referencia', () => {

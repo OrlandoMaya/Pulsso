@@ -10,6 +10,7 @@
   --color-flow-ready: var(--flow-ready);
   --color-flow-done: var(--flow-done);
   --color-flow-active: var(--flow-active);
+  --color-chart-spend: var(--chart-spend);
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
@@ -64,6 +65,8 @@
   --flow-done: oklch(0.6 0.15 160);
   --flow-active: oklch(0.58 0.22 275);
   --flow-grid: oklch(0.88 0.004 286);
+  /* Finanzas: columnas de la gráfica (validado contra la superficie clara) */
+  --chart-spend: #2563eb;
 }
 
 .dark {
@@ -91,6 +94,8 @@
   --flow-done: oklch(0.7 0.15 160);
   --flow-active: oklch(0.72 0.18 275);
   --flow-grid: oklch(0.3 0.006 286);
+  /* Validado contra la superficie oscura */
+  --chart-spend: #4f8ff7;
 }
 
 @layer base {

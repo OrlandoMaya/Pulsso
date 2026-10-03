@@ -33,6 +33,7 @@ import type { AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
 import { ItemCheckbox } from '../calendar/ItemCheckbox'
+import { Subtasks } from './Subtasks'
 import { useCalendars, useDeleteItem, usePatchTask } from '../calendar/queries'
 
 interface Props {
@@ -140,9 +141,15 @@ export function TaskCard({ task, date, index, count, onMove, compact = false }: 
             task.done && 'opacity-70',
           )}
         />
+        <Subtasks task={task} date={date} compact={compact} />
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {category && (
             <span className={cn('rounded-full px-2 py-0.5 font-medium', c.soft, c.text)}>{category.name}</span>
+          )}
+          {task.subtasks.length > 0 && (
+            <span className="font-mono text-muted-foreground" title="Subtareas hechas">
+              {task.subtasks.filter((st) => st.done).length}/{task.subtasks.length}
+            </span>
           )}
           {task.project && (
             <Link

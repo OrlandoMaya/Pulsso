@@ -42,6 +42,13 @@ export interface Task {
   position?: number
   projectId?: string | null
   nodeId?: string | null
+  subtasks?: Subtask[]
+}
+
+/** Paso de una tarea */
+export interface Subtask {
+  id: string
+  title: string
 }
 
 export interface AgendaTask {
@@ -55,6 +62,8 @@ export interface AgendaTask {
   recurring: boolean
   position: number
   done: boolean
+  /** Subtareas con su estado ese día */
+  subtasks: (Subtask & { done: boolean })[]
   /** Viene de un proyecto */
   project?: ProjectRef | null
 }
@@ -82,6 +91,8 @@ export interface AgendaEvent {
 
 export interface AgendaDay {
   date: string
+  /** Total gastado ese día */
+  spent: number
   progress: { done: number; total: number }
   tasks: AgendaTask[]
   events: AgendaEvent[]
@@ -152,4 +163,25 @@ export interface Project extends GeneralTask {
   nodes: ProjectNode[]
   edges: ProjectEdge[]
   progress: ProjectProgress
+}
+
+/* ─────────── Finanzas ─────────── */
+
+export interface Expense {
+  id: string
+  date: string
+  title: string
+  description: string
+  amount: number
+}
+
+export interface ExpenseSummary {
+  from: string
+  to: string
+  total: number
+  count: number
+  dailyAverage: number
+  max: { date: string; total: number } | null
+  days: { date: string; total: number; count: number }[]
+  allTime: { total: number; count: number }
 }

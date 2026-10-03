@@ -5,6 +5,7 @@ import { CalendarsService } from '../calendars/calendars.service';
 import { parseDate, toDateKey } from '../common/utils/date';
 import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { Completion } from '../completions/schemas/completion.schema';
+import { SubtaskCompletion } from '../completions/schemas/subtask-completion.schema';
 import { taskOccursOn } from '../recurrence/recurrence';
 import { CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
 import { Task, TaskDocument } from './schemas/task.schema';
@@ -14,6 +15,7 @@ export class TasksService {
   constructor(
     @InjectModel(Task.name) private readonly tasks: Model<Task>,
     @InjectModel(Completion.name) private readonly completions: Model<Completion>,
+    @InjectModel(SubtaskCompletion.name) private readonly subtaskDone: Model<SubtaskCompletion>,
     private readonly calendars: CalendarsService,
     private readonly projects: GeneralTasksService,
   ) {}
@@ -41,8 +43,10 @@ export class TasksService {
     const { projectId, nodeId, ...data } = dto;
     const link =
       projectId && nodeId ? await this.projects.prepareLink(userId, projectId, nodeId) : null;
+    this.checkSubtasks(data.subtasks);
     return this.tasks.create({
       ...data,
+      subtasks: data.subtasks ?? [],
       ...link,
       description: dto.description ?? '',
       position: await this.nextPosition(userId),
@@ -58,6 +62,31 @@ export class TasksService {
       task.calendarId = new Types.ObjectId(dto.calendarId);
     }
     if (dto.startDate) this.checkDate(dto.startDate);
+    if (dto.subtasks) {
+      this.checkSubtasks(dto.subtasks);
+      task.subtasks = dto.subtasks;
+      // Las que se quitaron dejan de contar como tachadas
+      const ids = dto.subtasks.map((s) => s.id);
+      await this.subtaskDone.updateMany(
+        { userId, taskId: task._id },
+        { $pull: { subtaskIds: { $nin: ids } } },
+      );
+      // Los días en que la tarea ya estaba hecha, las nuevas cuentan como hechas (no se deshace el historial)
+      const doneDates = await this.completions
+        .find({ userId, sourceId: task._id })
+        .distinct('date');
+      if (doneDates.length && ids.length) {
+        await this.subtaskDone.bulkWrite(
+          doneDates.map((date) => ({
+            updateOne: {
+              filter: { userId: new Types.ObjectId(userId), taskId: task._id, date },
+              update: { $addToSet: { subtaskIds: { $each: ids } } },
+              upsert: true,
+            },
+          })),
+        );
+      }
+    }
     task.set({
       title: dto.title ?? task.title,
       description: dto.description ?? task.description,
@@ -72,6 +101,7 @@ export class TasksService {
     await Promise.all([
       this.tasks.deleteOne({ _id: id, userId }),
       this.completions.deleteMany({ userId, sourceId: id }),
+      this.subtaskDone.deleteMany({ userId, taskId: id }),
     ]);
   }
 
@@ -81,6 +111,7 @@ export class TasksService {
     if (!taskOccursOn(task, date)) throw new BadRequestException('La tarea no toca ese día');
     await this.tasks.updateOne({ _id: id, userId }, { $addToSet: { exdates: date } });
     await this.completions.deleteMany({ userId, sourceId: id, date });
+    await this.subtaskDone.deleteMany({ userId, taskId: id, date });
     return this.findOne(userId, id);
   }
 
@@ -134,6 +165,12 @@ export class TasksService {
   private async nextPosition(userId: string) {
     const last = await this.tasks.findOne({ userId }).sort({ position: -1 }).lean().exec();
     return last ? (last.position ?? 0) + 1 : 0;
+  }
+
+  private checkSubtasks(subtasks?: { id: string }[]) {
+    const ids = subtasks?.map((s) => s.id) ?? [];
+    if (new Set(ids).size !== ids.length)
+      throw new BadRequestException('Subtareas con id repetido');
   }
 
   private checkDate(date: string) {

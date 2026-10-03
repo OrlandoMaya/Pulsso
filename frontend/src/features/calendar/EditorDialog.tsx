@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { differenceInCalendarDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarDays, CalendarPlus, ListChecks, Loader2, Repeat, Trash2, CircleDot } from 'lucide-react'
+import { CalendarDays, CalendarPlus, ListChecks, Loader2, Plus, Repeat, Trash2, CircleDot, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -31,6 +31,7 @@ import {
   type Recurrence,
   type RepeatRule,
 } from '@/lib/event-types'
+import { shortId } from '@/lib/diagram'
 import { lastDayKey } from '@/lib/multiday'
 import { WEEKDAYS, weekdayOf } from '@/lib/recurrence'
 import type { CalendarEvent, Task } from '@/lib/types'
@@ -54,6 +55,7 @@ const schema = z
     until: z.string().optional(),
     notes: z.string().max(2000).optional(),
     description: z.string().max(5000).optional(),
+    subtasks: z.array(z.object({ id: z.string(), title: z.string().max(120) })).max(50),
   })
   .refine((v) => v.kind === 'task' || !v.allDay || v.endDate >= v.date, {
     path: ['endDate'],
@@ -147,6 +149,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       endTime: event.allDay ? '10:00' : event.end.slice(11, 16),
       notes: event.notes ?? '',
       description: '',
+      subtasks: [],
     }
   }
   if (task) {
@@ -162,6 +165,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
       endTime: '10:00',
       notes: '',
       description: task.description ?? '',
+      subtasks: task.subtasks ?? [],
     }
   }
   const t = target.mode === 'create' ? target : null
@@ -181,6 +185,7 @@ function defaults(target: EditorTarget, event?: CalendarEvent, task?: Task): For
     endTime: endAfter(time),
     notes: t?.notes ?? '',
     description: t?.notes ?? '',
+    subtasks: [],
   }
 }
 
@@ -214,6 +219,7 @@ function EditorForm({
   const date = useWatch({ control, name: 'date' })
   const endDate = useWatch({ control, name: 'endDate' })
   const calendarId = useWatch({ control, name: 'calendarId' })
+  const subtasks = useFieldArray({ control, name: 'subtasks', keyName: 'key' })
 
   // Si el inicio pasa del fin, el fin se mueve con él
   useEffect(() => {
@@ -450,9 +456,52 @@ function EditorForm({
           <Textarea id="notes" rows={2} placeholder="Opcional" {...register('notes')} />
         </Field>
       ) : (
-        <Field label="Descripción" htmlFor="description">
-          <Textarea id="description" rows={2} placeholder="Pasos, notas… (opcional)" {...register('description')} />
-        </Field>
+        <>
+          <Field label="Descripción" htmlFor="description">
+            <Textarea id="description" rows={2} placeholder="Notas (opcional)" {...register('description')} />
+          </Field>
+          <div className="flex flex-col gap-2">
+            <Label>Subtareas</Label>
+            {subtasks.fields.map((f, i) => (
+              <div key={f.key} className="flex items-center gap-2">
+                <span className="size-3.5 shrink-0 rounded-[4px] border border-input" aria-hidden />
+                <Input
+                  aria-label={`Subtarea ${i + 1}`}
+                  placeholder="Paso"
+                  maxLength={120}
+                  className="h-8"
+                  {...register(`subtasks.${i}.title`)}
+                  onKeyDown={(e) => {
+                    // Enter agrega otra en lugar de guardar el formulario
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      subtasks.insert(i + 1, { id: shortId('s'), title: '' })
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Quitar subtarea ${i + 1}`}
+                  onClick={() => subtasks.remove(i)}
+                >
+                  <X />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-fit text-muted-foreground"
+              onClick={() => subtasks.append({ id: shortId('s'), title: '' })}
+            >
+              <Plus />
+              Agregar subtarea
+            </Button>
+          </div>
+        </>
       )}
 
       {/* Editar cambia este evento; para poner otro a la misma hora hay que crearlo aparte */}

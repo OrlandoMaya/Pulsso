@@ -45,6 +45,7 @@ const router = createBrowserRouter([
           { path: '/semana/:date?', element: <CalendarPage view="semana" /> },
           { path: '/mes/:date?', element: <CalendarPage view="mes" /> },
           { path: '/pendientes', element: <CalendarPage view="mes" section="pendientes" /> },
+          { path: '/finanzas', element: <CalendarPage view="mes" section="finanzas" /> },
           {
             path: '/proyectos/:id',
             // El lienzo (React Flow) se carga solo al abrir un proyecto

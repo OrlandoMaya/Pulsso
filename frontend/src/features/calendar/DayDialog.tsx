@@ -10,6 +10,7 @@ import { capitalize, fromKey, hhmm } from '@/lib/dates'
 import { pairRows } from '@/lib/overlap'
 import type { AgendaTask } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { DayExpenses } from '../finance/DayExpenses'
 import { QuickAddTask } from '../tasks/QuickAddTask'
 import { TaskList } from '../tasks/TaskList'
 import { useCalendarActions } from './editor-context'
@@ -168,6 +169,8 @@ function DayContent({
               </div>
             ))}
         </section>
+
+        <DayExpenses date={date} compact />
       </div>
 
       <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/40 px-4 py-3 sm:px-6 sm:py-4">

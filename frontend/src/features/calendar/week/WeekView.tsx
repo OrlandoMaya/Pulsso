@@ -12,6 +12,7 @@ import { ItemCheckbox } from '../ItemCheckbox'
 import { useNow } from '../navigation'
 import { SpecialChip } from '../SpecialChip'
 import { isBanner, layoutBars } from '@/lib/multiday'
+import { SubtaskCount } from '../../tasks/SubtaskCount'
 
 const HOUR = 56
 const MIN_HEIGHT = 22
@@ -161,6 +162,7 @@ export function WeekView({
                           <span className={cn('truncate', t.done && 'text-muted-foreground line-through')}>
                             {t.title}
                           </span>
+                          <SubtaskCount task={t} />
                         </label>
                       ))}
                     </div>

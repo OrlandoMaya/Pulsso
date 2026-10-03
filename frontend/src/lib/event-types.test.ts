@@ -81,10 +81,21 @@ describe('tareas', () => {
     expect(toTaskPayload({ ...t, recurrence: 'normal' })).toEqual({
       title: 'Pagar luz',
       description: '',
+      subtasks: [],
       calendarId: 'c1',
       startDate: '2026-09-24',
       rrule: 'FREQ=DAILY;COUNT=1',
     })
+  })
+
+  it('subtareas: se limpian y se quitan las vacías', () => {
+    const subtasks = [
+      { id: 's1', title: ' Comprar pintura ' },
+      { id: 's2', title: '   ' },
+    ]
+    expect(toTaskPayload({ ...t, recurrence: 'normal', subtasks }).subtasks).toEqual([
+      { id: 's1', title: 'Comprar pintura' },
+    ])
   })
 
   it('recurrente = con regla', () => {

@@ -4,6 +4,7 @@ import { addDays, parseDate, toDateKey, toDateTimeString } from '../common/utils
 import { CompletionsService } from '../completions/completions.service';
 import { EventsService } from '../events/events.service';
 import { expandEvent, expandTask } from '../recurrence/recurrence';
+import { ExpensesService } from '../expenses/expenses.service';
 import { GeneralTasksService } from '../general-tasks/general-tasks.service';
 import { TasksService } from '../tasks/tasks.service';
 
@@ -20,6 +21,8 @@ export interface AgendaTask {
   recurring: boolean;
   position: number;
   done: boolean;
+  /** Subtareas con su estado ese día */
+  subtasks: { id: string; title: string; done: boolean }[];
   /** Viene de un proyecto */
   project: { id: string; title: string } | null;
 }
@@ -42,6 +45,8 @@ export interface AgendaEvent {
 
 export interface AgendaDay {
   date: string;
+  /** Total gastado ese día */
+  spent: number;
   progress: { done: number; total: number };
   tasks: AgendaTask[];
   events: AgendaEvent[];
@@ -55,6 +60,7 @@ export class AgendaService {
     private readonly tasks: TasksService,
     private readonly completions: CompletionsService,
     private readonly projects: GeneralTasksService,
+    private readonly expenses: ExpensesService,
   ) {}
 
   async range(userId: string, fromKey: string, toKey: string, calendarIds?: string[]) {
@@ -67,10 +73,12 @@ export class AgendaService {
     const colorOf = new Map(selected.map((c) => [c.id, c.color as string]));
     const ids = [...colorOf.keys()];
 
-    const [events, tasks, done] = await Promise.all([
+    const [events, tasks, done, subtasksDone, spent] = await Promise.all([
       this.events.findCandidates(userId, from, to, ids),
       this.tasks.findCandidates(userId, to, ids),
       this.completions.doneByDate(userId, fromKey, toDateKey(to)),
+      this.completions.subtasksDoneByDate(userId, fromKey, toDateKey(to)),
+      this.expenses.spentByDate(userId, fromKey, toKey),
     ]);
 
     const projectTitles = await this.projects.titles(userId, [
@@ -85,6 +93,7 @@ export class AgendaService {
     for (let d = from; d < to; d = addDays(d, 1)) {
       days.set(toDateKey(d), {
         date: toDateKey(d),
+        spent: spent.get(toDateKey(d)) ?? 0,
         progress: { done: 0, total: 0 },
         tasks: [],
         events: [],
@@ -104,6 +113,11 @@ export class AgendaService {
           recurring: !/COUNT=1(;|$)/.test(task.rrule),
           position: task.position ?? 0,
           done: isDone(date, task.id),
+          subtasks: (task.subtasks ?? []).map((s) => ({
+            id: s.id,
+            title: s.title,
+            done: subtasksDone.get(`${task.id}|${date}`)?.has(s.id) ?? false,
+          })),
           project: projectOf(task),
         });
       }
