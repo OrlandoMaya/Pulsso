@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight, LogOut, Menu, Workflow } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LogOut, Menu, Wallet, Workflow } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,9 +18,16 @@ import { ThemeToggle } from '../theme/ThemeToggle'
 
 const VIEW_LABEL: Record<View, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' }
 
+/** Páginas que no son del calendario: sin navegación de fechas */
+export type Section = 'pendientes' | 'finanzas'
+
+const SECTION: Record<Section, { title: string; hint: string }> = {
+  pendientes: { title: 'Pendientes y proyectos', hint: 'Lo que no tiene un día fijo' },
+  finanzas: { title: 'Finanzas', hint: 'Lo que gastas cada día' },
+}
+
 interface Props {
-  /** Pendientes: sin navegación de fechas */
-  section?: 'pendientes'
+  section?: Section
   view: View
   date: Date
   subtitle?: string
@@ -39,8 +46,8 @@ export function Toolbar({ section, view, date, subtitle, onToday, onShift, onMen
       </Button>
       {section ? (
         <div className="order-last flex w-full min-w-0 flex-col px-1 sm:order-none sm:w-auto sm:px-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">Pendientes y proyectos</h1>
-          <span className="hidden text-xs text-muted-foreground sm:block">Lo que no tiene un día fijo</span>
+          <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{SECTION[section].title}</h1>
+          <span className="hidden text-xs text-muted-foreground sm:block">{SECTION[section].hint}</span>
         </div>
       ) : (
         <>
@@ -78,15 +85,27 @@ export function Toolbar({ section, view, date, subtitle, onToday, onShift, onMen
         ))}
         <Link
           to="/pendientes"
-          aria-current={section ? 'page' : undefined}
+          aria-current={section === 'pendientes' ? 'page' : undefined}
           title="Pendientes y proyectos"
           className={cn(
             'flex h-full items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
-            section && 'bg-background text-foreground shadow-sm dark:bg-input/40',
+            section === 'pendientes' && 'bg-background text-foreground shadow-sm dark:bg-input/40',
           )}
         >
           <Workflow className="size-4" />
           <span className="max-md:sr-only">Proyectos</span>
+        </Link>
+        <Link
+          to="/finanzas"
+          aria-current={section === 'finanzas' ? 'page' : undefined}
+          title="Finanzas"
+          className={cn(
+            'flex h-full items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3',
+            section === 'finanzas' && 'bg-background text-foreground shadow-sm dark:bg-input/40',
+          )}
+        >
+          <Wallet className="size-4" />
+          <span className="max-md:sr-only">Finanzas</span>
         </Link>
       </nav>
       <ThemeToggle className="hidden sm:inline-flex" />

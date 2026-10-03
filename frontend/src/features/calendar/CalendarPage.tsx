@@ -15,9 +15,11 @@ import { WeekView } from './week/WeekView'
 import { DayView } from '../day/DayView'
 import { GeneralTaskDialog, type GeneralTarget } from '../projects/GeneralTaskDialog'
 import { PendientesView } from '../projects/PendientesView'
+import { FinanceView } from '../finance/FinanceView'
+import type { Section } from './Toolbar'
 
-/** `section="pendientes"`: en lugar del calendario, las tareas generales y los proyectos */
-export function CalendarPage({ view, section }: { view: View; section?: 'pendientes' }) {
+/** `section`: en lugar del calendario, pendientes y proyectos o finanzas */
+export function CalendarPage({ view, section }: { view: View; section?: Section }) {
   const nav = useCalendarNav(view)
   const { start, end } = visibleRange(view, nav.date)
   const agenda = useAgenda(toKey(start), toKey(end))
@@ -54,6 +56,8 @@ export function CalendarPage({ view, section }: { view: View; section?: 'pendien
           />
           {section === 'pendientes' ? (
             <PendientesView />
+          ) : section === 'finanzas' ? (
+            <FinanceView />
           ) : agenda.isError ? (
             <div className="grid flex-1 place-items-center p-6">
               <div className="flex max-w-sm flex-col items-center gap-3 text-center">

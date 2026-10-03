@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/colors'
 import { hhmm, toKey } from '@/lib/dates'
 import { pairRows } from '@/lib/overlap'
+import { DayExpenses } from '../finance/DayExpenses'
 import type { AgendaDay } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
@@ -139,7 +140,7 @@ function DayEvents({ date, day }: { date: string; day?: AgendaDay }) {
   const allDay = day?.events.filter(isBanner) ?? []
 
   return (
-    <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start" aria-label="Eventos del día">
+    <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start" aria-label="Eventos y gastos del día">
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Eventos</h2>
@@ -195,6 +196,9 @@ function DayEvents({ date, day }: { date: string; day?: AgendaDay }) {
             ))}
           </>
         )}
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <DayExpenses date={date} compact />
       </div>
     </aside>
   )

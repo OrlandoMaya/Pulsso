@@ -1,8 +1,9 @@
 import { format, isSameMonth, isToday } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Check, Repeat } from 'lucide-react'
+import { Check, Repeat, Wallet } from 'lucide-react'
 import { COLORS } from '@/lib/colors'
 import { eachDay, hhmm, toKey } from '@/lib/dates'
+import { formatMoney } from '@/lib/money'
 import { pairRows } from '@/lib/overlap'
 import type { AgendaDay, AgendaEvent } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -182,6 +183,16 @@ function DayCell({
           ))}
         </div>
       ))}
+
+      {(day?.spent ?? 0) > 0 && (
+        <span
+          className="mt-auto flex items-center gap-1 px-1 font-mono text-[11px] text-muted-foreground tabular-nums max-sm:hidden"
+          title="Gastado este día"
+        >
+          <Wallet className="size-3" aria-hidden />
+          {formatMoney(day!.spent)}
+        </span>
+      )}
 
       {hidden > 0 && (
         <button

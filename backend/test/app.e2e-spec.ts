@@ -587,6 +587,60 @@ describe('Pulsso API (e2e)', () => {
       .expect(400);
   });
 
+  it('gastos: por día, resumen y aislados por usuario', async () => {
+    const token = await register('f@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+    const add = (date: string, title: string, amount: number, description?: string) =>
+      as(http.post('/api/expenses')).send({ date, title, amount, description });
+
+    const cafe = await add('2026-10-01', 'Café', 3.5, 'Con leche').expect(201);
+    expect(cafe.body).toMatchObject({
+      date: '2026-10-01',
+      title: 'Café',
+      amount: 3.5,
+      description: 'Con leche',
+    });
+    expect(cafe.body.amountCents).toBeUndefined();
+    await add('2026-10-01', 'Almuerzo', 12.25).expect(201);
+    await add('2026-10-03', 'Gasolina', 40).expect(201);
+    await add('2026-09-15', 'Fuera del rango', 100).expect(201);
+    await add('2026-10-01', 'x', 0).expect(400);
+    await add('2026-10-01', 'x', 1.234).expect(400);
+
+    const list = await as(
+      http.get('/api/expenses').query({ from: '2026-10-01', to: '2026-10-03' }),
+    ).expect(200);
+    expect(list.body.map((e: { title: string }) => e.title)).toEqual([
+      'Gasolina',
+      'Almuerzo',
+      'Café',
+    ]);
+
+    const sum = await as(
+      http.get('/api/expenses/summary').query({ from: '2026-10-01', to: '2026-10-04' }),
+    ).expect(200);
+    expect(sum.body).toMatchObject({
+      total: 55.75,
+      count: 3,
+      dailyAverage: 13.94,
+      max: { date: '2026-10-03', total: 40 },
+      allTime: { total: 155.75, count: 4 },
+    });
+    expect(sum.body.days.map((d: { total: number }) => d.total)).toEqual([15.75, 0, 40, 0]);
+
+    // Editar y la agenda muestra lo gastado por día
+    await as(http.patch(`/api/expenses/${cafe.body.id}`))
+      .send({ amount: 4 })
+      .expect(200);
+    const day = await as(http.get('/api/agenda/day/2026-10-01')).expect(200);
+    expect(day.body.spent).toBe(16.25);
+
+    const other = await register('f2@pulsso.dev');
+    await http.delete(`/api/expenses/${cafe.body.id}`).auth(other, { type: 'bearer' }).expect(404);
+    await as(http.delete(`/api/expenses/${cafe.body.id}`)).expect(204);
+    await as(http.get('/api/expenses').query({ from: '2026-01-01', to: '2027-12-31' })).expect(400);
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;
