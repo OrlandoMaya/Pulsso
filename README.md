@@ -161,10 +161,15 @@ pnpm format                                 # prettier
     al revés). Borrar la actividad o el proyecto deja lo programado en el calendario, sin vínculo.
 - **Finanzas** (`/finanzas`, botón **Finanzas** arriba): en la vista Día y en el modal del día hay una sección
   **Gastos** para registrar lo gastado (nombre, monto y descripción opcional; el monto acepta `12.50`, `12,50` o
-  `$1,234.50`). Se editan ahí mismo y el mes muestra lo gastado en cada día. La vista Finanzas, por mes, tiene el total
+  `$1,234.50`; mientras escribes se pone el separador de miles: `1,234,567.89`). Cada gasto puede tener una
+  **categoría de finanzas**. Se editan ahí mismo y el mes muestra lo gastado en cada día. La vista Finanzas, por mes, tiene el total
   gastado, el promedio por día, el día con más gasto, el **balance total** (todo lo registrado), una gráfica de columnas
   con lo gastado por día (al pasar el mouse muestra el total; clic abre el día; también se ve como tabla) y la lista de
   gastos del mes por día, con su formulario para agregar en cualquier fecha.
+  - **Categorías de finanzas** (pestaña **Categorías**): se crean, editan y borran con nombre, descripción, color y
+    **presupuesto mensual** (opcional). Al borrar una, sus gastos quedan "Sin categoría".
+  - En el **Resumen**: la **categoría con más gasto**, el gasto **por categoría** de más a menos contra su presupuesto
+    (cuánto queda o cuánto se pasó) y un aviso si se superó algún presupuesto en el mes.
 - **Categorías**: dan el color a cada evento. Al registrarte se crean Trabajo, Equipo, Clientes, Personal y Otros.
   En la barra lateral puedes crearlas (**+**), editarlas (nombre y color) o eliminarlas desde **···**; al eliminar se
   avisa cuántos eventos, tareas y proyectos se borran con ella y siempre debe quedar al menos una. En la API se llaman `calendars`.
@@ -217,9 +222,12 @@ dentro de `frontend/`.
 | `POST` | `/tasks/:id/exdates` | `{ date }` quita la tarea solo ese día |
 | `PUT` | `/completions` | `{ sourceType: 'event'\|'task', sourceId, date, done }` tacha o destacha (una tarea tacha también sus subtareas) |
 | `PUT` | `/completions/subtask` | `{ taskId, subtaskId, date, done }` tacha una subtarea; responde `{ subtasksDone, done }` |
-| `GET` `POST` | `/expenses?from=&to=` | Gastos del rango (máx. 400 días) / nuevo `{ date, title, description?, amount }` |
+| `GET` `POST` | `/expenses?from=&to=` | Gastos del rango (máx. 400 días) / nuevo `{ date, title, description?, amount, categoryId? }` |
 | `PATCH` `DELETE` | `/expenses/:id` | Editar / borrar un gasto |
-| `GET` | `/expenses/summary?from=&to=` | `{ total, count, dailyAverage, max, days: [{ date, total, count }], allTime }` |
+| `GET` | `/expenses/summary?from=&to=` | `{ total, count, dailyAverage, max, days: [{ date, total, count }], allTime, byCategory: [{ categoryId, name, color, total, count, budget, overBy }] }` |
+| `GET` `POST` | `/expense-categories` | Categorías de finanzas `{ name, description?, color, budget? }` (`budget`: mensual; `null` = sin presupuesto) |
+| `PATCH` `DELETE` | `/expense-categories/:id` | Editar / borrar (sus gastos quedan sin categoría) |
+| `GET` | `/expense-categories/:id/usage` | `{ expenses }` que tiene |
 | `GET` | `/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD[&calendarIds=a,b]` | Días del rango (vista semana/mes, máx. 62 días) |
 | `GET` | `/agenda/day/:date` | Todo lo de un día: alimenta el **modal del día** |
 | `PUT` | `/tasks/order` | `{ ids }` nuevo orden de las tareas |

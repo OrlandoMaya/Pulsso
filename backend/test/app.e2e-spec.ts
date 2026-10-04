@@ -641,6 +641,86 @@ describe('Pulsso API (e2e)', () => {
     await as(http.get('/api/expenses').query({ from: '2026-01-01', to: '2027-12-31' })).expect(400);
   });
 
+  it('categorías de finanzas: CRUD, presupuesto y estadísticas', async () => {
+    const token = await register('fc@pulsso.dev');
+    const as = (r: request.Test) => r.auth(token, { type: 'bearer' });
+
+    const comida = await as(http.post('/api/expense-categories'))
+      .send({ name: 'Comida', description: 'Súper y restaurantes', color: 'amber', budget: 1500 })
+      .expect(201);
+    expect(comida.body).toMatchObject({ name: 'Comida', color: 'amber', budget: 1500 });
+    expect(comida.body.budgetCents).toBeUndefined();
+    const ocio = await as(http.post('/api/expense-categories'))
+      .send({ name: 'Ocio', color: 'violet', budget: 100 })
+      .expect(201);
+    await as(http.post('/api/expense-categories'))
+      .send({ name: 'Ahorro', color: 'emerald', budget: 500 })
+      .expect(201);
+    await as(http.post('/api/expense-categories')).send({ name: 'x', color: 'fucsia' }).expect(400);
+
+    const add = (title: string, amount: number, categoryId?: string) =>
+      as(http.post('/api/expenses')).send({ date: '2026-10-02', title, amount, categoryId });
+    await add('Súper', 1200, comida.body.id).expect(201);
+    await add('Cena', 450.5, comida.body.id).expect(201);
+    const cine = await add('Cine', 80, ocio.body.id).expect(201);
+    await add('Taxi', 30).expect(201);
+    await add('x', 1, '507f1f77bcf86cd799439011').expect(404);
+
+    const sum = await as(
+      http.get('/api/expenses/summary').query({ from: '2026-10-01', to: '2026-10-31' }),
+    ).expect(200);
+    expect(sum.body.byCategory).toEqual([
+      {
+        categoryId: comida.body.id,
+        name: 'Comida',
+        color: 'amber',
+        total: 1650.5,
+        count: 2,
+        budget: 1500,
+        overBy: 150.5,
+      },
+      {
+        categoryId: ocio.body.id,
+        name: 'Ocio',
+        color: 'violet',
+        total: 80,
+        count: 1,
+        budget: 100,
+        overBy: 0,
+      },
+      {
+        categoryId: null,
+        name: 'Sin categoría',
+        color: 'zinc',
+        total: 30,
+        count: 1,
+        budget: null,
+        overBy: 0,
+      },
+      expect.objectContaining({ name: 'Ahorro', total: 0, budget: 500 }),
+    ]);
+
+    // Editar: quitar presupuesto y cambiar la categoría de un gasto
+    await as(http.patch(`/api/expense-categories/${ocio.body.id}`))
+      .send({ budget: null })
+      .expect(200);
+    await as(http.patch(`/api/expenses/${cine.body.id}`))
+      .send({ categoryId: comida.body.id })
+      .expect(200);
+    expect((await as(http.get(`/api/expense-categories/${comida.body.id}/usage`))).body).toEqual({
+      expenses: 3,
+    });
+
+    // Borrar: los gastos quedan sin categoría
+    await as(http.delete(`/api/expense-categories/${comida.body.id}`)).expect(204);
+    const after = await as(
+      http.get('/api/expenses').query({ from: '2026-10-02', to: '2026-10-02' }),
+    ).expect(200);
+    expect(after.body.every((e: { categoryId: string | null }) => e.categoryId === null)).toBe(
+      true,
+    );
+  });
+
   it('valida entradas', async () => {
     const token = await register('c@pulsso.dev');
     const cal = (await http.get('/api/calendars').auth(token, { type: 'bearer' })).body[0].id;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
-import type { Expense, ExpenseSummary } from '@/lib/types'
+import type { Expense, ExpenseCategory, ExpenseSummary } from '@/lib/types'
 
 export const financeKeys = {
   list: (from: string, to: string) => ['expenses', from, to] as const,
@@ -12,7 +12,11 @@ const onError = (e: Error) => toast.error(e.message)
 
 /** Tras cualquier cambio: listas, resúmenes y lo gastado que muestra el calendario */
 const refresh = (qc: QueryClient) =>
-  Promise.all(['expenses', 'expense-summary', 'agenda', 'day'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
+  Promise.all(
+    ['expenses', 'expense-summary', 'expense-categories', 'agenda', 'day'].map((k) =>
+      qc.invalidateQueries({ queryKey: [k] }),
+    ),
+  )
 
 export function useExpenses(from: string, to: string) {
   return useQuery({
@@ -30,7 +34,7 @@ export function useExpenseSummary(from: string, to: string) {
   })
 }
 
-export type ExpenseInput = Omit<Expense, 'id'>
+export type ExpenseInput = Omit<Expense, 'id' | 'categoryId'> & { categoryId?: string | null }
 
 export function useCreateExpense() {
   const qc = useQueryClient()
@@ -68,5 +72,48 @@ export function useDeleteExpense() {
     },
     onError,
     onSettled: () => refresh(qc),
+  })
+}
+
+/* ─────────── Categorías de finanzas ─────────── */
+
+export function useExpenseCategories() {
+  return useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: () => api<ExpenseCategory[]>('/expense-categories'),
+  })
+}
+
+export function useExpenseCategoryUsage(id: string | null) {
+  return useQuery({
+    // Fuera de 'expense-categories' para no volver a pedirlo al borrar la categoría
+    queryKey: ['expense-category-usage', id],
+    queryFn: () => api<{ expenses: number }>(`/expense-categories/${id}/usage`),
+    enabled: !!id,
+    staleTime: 0,
+  })
+}
+
+export type ExpenseCategoryInput = Omit<ExpenseCategory, 'id'>
+
+export function useSaveExpenseCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string; data: ExpenseCategoryInput }) =>
+      id
+        ? api<ExpenseCategory>(`/expense-categories/${id}`, { method: 'PATCH', body: data })
+        : api<ExpenseCategory>('/expense-categories', { method: 'POST', body: data }),
+    onSuccess: () => refresh(qc),
+    onError,
+  })
+}
+
+/** Borra la categoría; sus gastos quedan sin categoría */
+export function useDeleteExpenseCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api(`/expense-categories/${id}`, { method: 'DELETE' }),
+    onSuccess: () => refresh(qc),
+    onError,
   })
 }

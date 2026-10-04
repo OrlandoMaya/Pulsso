@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { formatMoney, parseAmount } from '@/lib/money'
+import { COLORS } from '@/lib/colors'
+import { formatMoney, parseAmount, toTyping } from '@/lib/money'
 import type { Expense } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { useDeleteExpense, useUpdateExpense } from './queries'
+import { CategorySelect } from './CategorySelect'
+import { MoneyInput } from './MoneyInput'
+import { useDeleteExpense, useExpenseCategories, useUpdateExpense } from './queries'
 
 /** Un gasto: nombre, descripción y monto se editan ahí mismo */
 export function ExpenseRow({ expense, compact = false }: { expense: Expense; compact?: boolean }) {
   const update = useUpdateExpense()
+  const categories = useExpenseCategories()
+  const category = categories.data?.find((c) => c.id === expense.categoryId)
   const remove = useDeleteExpense()
   const [title, setTitle] = useState(expense.title)
   const [description, setDescription] = useState(expense.description)
@@ -61,20 +66,29 @@ export function ExpenseRow({ expense, compact = false }: { expense: Expense; com
           className="w-full rounded-sm bg-transparent text-xs text-muted-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </div>
-      <input
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        onFocus={(e) => {
-          // Al editar, el número sin formato
-          setAmount(String(expense.amount))
-          requestAnimationFrame(() => e.target.select())
-        }}
-        onBlur={save}
-        onKeyDown={blurOnEnter}
-        inputMode="decimal"
-        aria-label="Monto"
-        className="w-28 shrink-0 rounded-sm bg-transparent text-right font-mono text-sm font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      />
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <MoneyInput
+          value={amount}
+          onValueChange={setAmount}
+          onFocus={(e) => {
+            // Al editar, sin el símbolo: solo el número con sus miles
+            setAmount(toTyping(expense.amount))
+            requestAnimationFrame(() => e.target.select())
+          }}
+          onBlur={save}
+          onKeyDown={blurOnEnter}
+          aria-label="Monto"
+          className="w-28 rounded-sm bg-transparent text-right font-mono text-sm font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        />
+        <CategorySelect
+          value={expense.categoryId}
+          onChange={(categoryId) => update.mutate({ id: expense.id, patch: { categoryId } })}
+          className={cn(
+            'h-6 border-none px-1.5 shadow-none',
+            category ? [COLORS[category.color].soft, COLORS[category.color].text] : 'text-muted-foreground',
+          )}
+        />
+      </div>
       <button
         type="button"
         onClick={() => remove.mutate(expense.id)}

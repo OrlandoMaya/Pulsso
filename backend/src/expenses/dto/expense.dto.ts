@@ -1,5 +1,15 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsMongoId,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { IsDateKey } from '../../recurrence/validators';
 
 export class CreateExpenseDto {
@@ -21,6 +31,12 @@ export class CreateExpenseDto {
   @Min(0.01)
   @Max(10_000_000_000)
   amount: number;
+
+  /** null = sin categoría */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsMongoId()
+  categoryId?: string | null;
 }
 
 export class UpdateExpenseDto extends PartialType(CreateExpenseDto) {}

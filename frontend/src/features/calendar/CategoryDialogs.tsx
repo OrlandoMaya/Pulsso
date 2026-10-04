@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,9 +11,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CALENDAR_COLORS, COLORS } from '@/lib/colors'
 import type { Calendar, CalendarColor } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { ColorPicker } from './ColorPicker'
 import { useCalendarUsage, useDeleteCalendar, useSaveCalendar } from './queries'
 
 /** Crear (sin `calendar`) o editar una categoría */
@@ -74,26 +73,7 @@ function CategoryForm({ calendar, onDone }: { calendar?: Calendar; onDone: () =>
         <span className="text-sm font-medium" id="category-color">
           Color
         </span>
-        <div role="radiogroup" aria-labelledby="category-color" className="flex flex-wrap gap-2">
-          {CALENDAR_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={COLORS[c].label}
-              title={COLORS[c].label}
-              onClick={() => setColor(c)}
-              className={cn(
-                'grid size-9 cursor-pointer place-items-center rounded-full ring-offset-2 ring-offset-background transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                COLORS[c].dot,
-                color === c && 'ring-2 ring-foreground',
-              )}
-            >
-              {color === c && <Check className="size-4 text-white" strokeWidth={3} />}
-            </button>
-          ))}
-        </div>
+        <ColorPicker value={color} onChange={setColor} labelledBy="category-color" />
       </div>
 
       <DialogFooter>
