@@ -52,3 +52,40 @@ export function niceTicks(max: number, count = 4): number[] {
   const top = Math.ceil(max / step) * step
   return Array.from({ length: Math.round(top / step) + 1 }, (_, i) => +(i * step).toFixed(2))
 }
+
+/**
+ * Formatea un monto mientras se escribe: separador de miles "," y decimales "." (máx. 2).
+ * `caret` es la posición del cursor en `raw`; devuelve dónde debe quedar en el texto nuevo.
+ */
+export function formatTyping(raw: string, caret = raw.length): { value: string; caret: number } {
+  // Cuántos dígitos y punto decimal hay antes del cursor: el cursor se recoloca después de ellos
+  const significant = (s: string) => s.replace(/[^\d.]/g, '').length
+  let before = significant(raw.slice(0, caret))
+
+  let int = ''
+  let dec: string | null = null
+  for (const ch of raw) {
+    if (/\d/.test(ch)) {
+      if (dec === null) int += ch
+      else if (dec.length < 2) dec += ch
+    } else if (ch === '.' && dec === null) {
+      dec = ''
+    }
+  }
+  // Sin ceros de más a la izquierda ("007" → "7"), pero "0.5" se queda
+  const trimmed = int.replace(/^0+(?=\d)/, '')
+  before -= int.length - trimmed.length
+  const grouped = trimmed.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const value = dec === null ? grouped : `${grouped || '0'}.${dec}`
+
+  let pos = 0
+  let seen = 0
+  while (pos < value.length && seen < before) {
+    if (/[\d.]/.test(value[pos])) seen++
+    pos++
+  }
+  return { value, caret: Math.max(0, Math.min(pos, value.length)) }
+}
+
+/** Monto ya guardado, listo para editar: "1234.5" → "1,234.50" */
+export const toTyping = (n: number) => formatTyping(n.toFixed(2)).value

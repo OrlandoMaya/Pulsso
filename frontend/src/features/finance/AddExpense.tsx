@@ -3,6 +3,8 @@ import { AlignLeft, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { parseAmount } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { CategorySelect } from './CategorySelect'
+import { MoneyInput } from './MoneyInput'
 import { useCreateExpense } from './queries'
 
 /** Registrar un gasto: nombre, monto y descripción opcional. `date` fijo o elegible */
@@ -19,6 +21,8 @@ export function AddExpense({
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [withDescription, setWithDescription] = useState(false)
+  // Se recuerda la última categoría usada para el siguiente gasto
+  const [categoryId, setCategoryId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -30,7 +34,7 @@ export function AddExpense({
     if (a === null) return setError('Monto inválido (p. ej. 12.50)')
     setError('')
     create.mutate(
-      { date, title: t, amount: a, description: description.trim() },
+      { date, title: t, amount: a, description: description.trim(), categoryId },
       {
         onSuccess: () => {
           setTitle('')
@@ -61,15 +65,16 @@ export function AddExpense({
           aria-label={`Nuevo gasto del ${date}`}
           className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
         />
-        <input
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="$0.00"
-          inputMode="decimal"
-          autoComplete="off"
-          aria-label="Monto"
-          className="w-24 shrink-0 bg-transparent text-right font-mono text-[15px] tabular-nums outline-none placeholder:text-muted-foreground"
-        />
+        <span className="flex shrink-0 items-center font-mono text-[15px] text-muted-foreground">
+          $
+          <MoneyInput
+            value={amount}
+            onValueChange={setAmount}
+            placeholder="0.00"
+            aria-label="Monto"
+            className="w-28 bg-transparent text-right text-foreground tabular-nums outline-none placeholder:text-muted-foreground"
+          />
+        </span>
       </div>
       {withDescription && (
         <input
@@ -95,6 +100,7 @@ export function AddExpense({
             Descripción
           </Button>
         )}
+        <CategorySelect value={categoryId} onChange={setCategoryId} />
         {onDateChange && (
           <input
             type="date"

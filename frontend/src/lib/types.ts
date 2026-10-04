@@ -173,6 +173,29 @@ export interface Expense {
   title: string
   description: string
   amount: number
+  /** null = sin categoría */
+  categoryId: string | null
+}
+
+/** Categoría de finanzas con presupuesto mensual */
+export interface ExpenseCategory {
+  id: string
+  name: string
+  description: string
+  color: CalendarColor
+  /** null = sin presupuesto */
+  budget: number | null
+}
+
+export interface CategoryStat {
+  categoryId: string | null
+  name: string
+  color: CalendarColor
+  total: number
+  count: number
+  budget: number | null
+  /** Cuánto se pasó del presupuesto (0 si no) */
+  overBy: number
 }
 
 export interface ExpenseSummary {
@@ -184,4 +207,6 @@ export interface ExpenseSummary {
   max: { date: string; total: number } | null
   days: { date: string; total: number; count: number }[]
   allTime: { total: number; count: number }
+  /** De más a menos gastado */
+  byCategory: CategoryStat[]
 }

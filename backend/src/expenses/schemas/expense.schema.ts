@@ -10,6 +10,7 @@ import { toJSONOptions } from '../../common/utils/serialize';
     ...toJSONOptions,
     transform: (doc: unknown, ret: Record<string, any>) => {
       toJSONOptions.transform(doc, ret);
+      ret.categoryId = ret.categoryId ? String(ret.categoryId) : null;
       ret.amount = ret.amountCents / 100;
       delete ret.amountCents;
       return ret;
@@ -32,6 +33,10 @@ export class Expense {
 
   @Prop({ required: true, min: 1 })
   amountCents: number;
+
+  /** Categoría de finanzas (null = sin categoría) */
+  @Prop({ type: SchemaTypes.ObjectId, default: null })
+  categoryId: Types.ObjectId | null;
 }
 
 export type ExpenseDocument = HydratedDocument<Expense>;

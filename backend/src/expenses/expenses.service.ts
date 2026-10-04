@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { addDays, parseDate, toDateKey } from '../common/utils/date';
 import { CreateExpenseDto, UpdateExpenseDto } from './dto/expense.dto';
+import { ExpenseCategory } from './schemas/expense-category.schema';
 import { Expense } from './schemas/expense.schema';
 
 /** Rango máximo de una consulta (un año y poco) */
@@ -10,9 +11,25 @@ const MAX_RANGE_DAYS = 400;
 
 const toCents = (amount: number) => Math.round(amount * 100);
 
+export interface CategoryStat {
+  /** null = gastos sin categoría */
+  categoryId: string | null;
+  name: string;
+  color: string;
+  total: number;
+  count: number;
+  /** Presupuesto mensual (null = sin presupuesto) */
+  budget: number | null;
+  /** Cuánto se pasó del presupuesto (0 si no se pasó o no tiene) */
+  overBy: number;
+}
+
 @Injectable()
 export class ExpensesService {
-  constructor(@InjectModel(Expense.name) private readonly expenses: Model<Expense>) {}
+  constructor(
+    @InjectModel(Expense.name) private readonly expenses: Model<Expense>,
+    @InjectModel(ExpenseCategory.name) private readonly categories: Model<ExpenseCategory>,
+  ) {}
 
   /** Gastos del rango, del más reciente al más antiguo */
   async list(userId: string, from: string, to: string) {
@@ -25,9 +42,10 @@ export class ExpensesService {
 
   async create(userId: string, dto: CreateExpenseDto) {
     this.checkDate(dto.date);
-    const { amount, ...rest } = dto;
+    const { amount, categoryId, ...rest } = dto;
     return this.expenses.create({
       ...rest,
+      categoryId: await this.categoryRef(userId, categoryId),
       description: dto.description ?? '',
       amountCents: toCents(amount),
       userId: new Types.ObjectId(userId),
@@ -37,6 +55,8 @@ export class ExpensesService {
   async update(userId: string, id: string, dto: UpdateExpenseDto) {
     const expense = await this.findOne(userId, id);
     if (dto.date) this.checkDate(dto.date);
+    if (dto.categoryId !== undefined)
+      expense.categoryId = await this.categoryRef(userId, dto.categoryId);
     expense.set({
       date: dto.date ?? expense.date,
       title: dto.title ?? expense.title,
@@ -55,7 +75,7 @@ export class ExpensesService {
   async summary(userId: string, from: string, to: string) {
     this.checkRange(from, to);
     const uid = new Types.ObjectId(userId);
-    const [byDay, allTime] = await Promise.all([
+    const [byDay, allTime, byCategory, categories] = await Promise.all([
       this.expenses.aggregate<{ _id: string; cents: number; count: number }>([
         { $match: { userId: uid, date: { $gte: from, $lte: to } } },
         { $group: { _id: '$date', cents: { $sum: '$amountCents' }, count: { $sum: 1 } } },
@@ -64,6 +84,11 @@ export class ExpensesService {
         { $match: { userId: uid } },
         { $group: { _id: null, cents: { $sum: '$amountCents' }, count: { $sum: 1 } } },
       ]),
+      this.expenses.aggregate<{ _id: Types.ObjectId | null; cents: number; count: number }>([
+        { $match: { userId: uid, date: { $gte: from, $lte: to } } },
+        { $group: { _id: '$categoryId', cents: { $sum: '$amountCents' }, count: { $sum: 1 } } },
+      ]),
+      this.categories.find({ userId: uid }).sort({ createdAt: 1 }).lean().exec(),
     ]);
     const found = new Map(byDay.map((d) => [d._id, d]));
     const days: { date: string; total: number; count: number }[] = [];
@@ -86,6 +111,7 @@ export class ExpensesService {
       max: top ? { date: top._id, total: top.cents / 100 } : null,
       days,
       allTime: { total: (allTime[0]?.cents ?? 0) / 100, count: allTime[0]?.count ?? 0 },
+      byCategory: this.categoryStats(byCategory, categories),
     };
   }
 
@@ -96,6 +122,53 @@ export class ExpensesService {
       { $group: { _id: '$date', cents: { $sum: '$amountCents' } } },
     ]);
     return new Map(rows.map((r) => [r._id, r.cents / 100]));
+  }
+
+  /**
+   * Gastado por categoría (de más a menos) contra su presupuesto mensual. Incluye las categorías
+   * sin gastos que tienen presupuesto, y "Sin categoría" si hay gastos sin clasificar.
+   */
+  private categoryStats(
+    rows: { _id: Types.ObjectId | null; cents: number; count: number }[],
+    categories: (ExpenseCategory & { _id: Types.ObjectId })[],
+  ) {
+    const spent = new Map(rows.map((r) => [r._id ? String(r._id) : null, r]));
+    const stats: CategoryStat[] = categories
+      .filter((c) => spent.has(String(c._id)) || c.budgetCents != null)
+      .map((c) => {
+        const row = spent.get(String(c._id));
+        const cents = row?.cents ?? 0;
+        const budget = c.budgetCents;
+        return {
+          categoryId: String(c._id),
+          name: c.name,
+          color: c.color as string,
+          total: cents / 100,
+          count: row?.count ?? 0,
+          budget: budget == null ? null : budget / 100,
+          overBy: budget != null && cents > budget ? (cents - budget) / 100 : 0,
+        };
+      });
+    const loose = spent.get(null);
+    if (loose) {
+      stats.push({
+        categoryId: null,
+        name: 'Sin categoría',
+        color: 'zinc',
+        total: loose.cents / 100,
+        count: loose.count,
+        budget: null,
+        overBy: 0,
+      });
+    }
+    return stats.sort((a, b) => b.total - a.total);
+  }
+
+  private async categoryRef(userId: string, categoryId: string | null | undefined) {
+    if (!categoryId) return null;
+    const exists = await this.categories.exists({ _id: categoryId, userId });
+    if (!exists) throw new NotFoundException('Categoría no encontrada');
+    return new Types.ObjectId(categoryId);
   }
 
   private async findOne(userId: string, id: string) {
