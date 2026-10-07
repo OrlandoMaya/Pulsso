@@ -24,6 +24,14 @@ server {
         try_files $uri =404;
     }
 
+    # APK de Android: siempre se baja como archivo y sin caché (el nombre no cambia entre versiones)
+    location /downloads/ {
+        types { application/vnd.android.package-archive apk; }
+        add_header Cache-Control "no-cache";
+        add_header Content-Disposition 'attachment; filename="Pulsso.apk"';
+        try_files $uri =404;
+    }
+
     # Rutas de React (/semana/..., /mes/..., /login): siempre index.html
     location / {
         add_header Cache-Control "no-cache";

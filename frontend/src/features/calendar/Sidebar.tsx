@@ -23,6 +23,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { LogOut } from 'lucide-react'
+import { DownloadAppCard } from '../app-download/DownloadApp'
 import { useAuth } from '../auth/auth-context'
 import { useTheme } from '../theme/theme-context'
 import { THEME_OPTIONS } from '../theme/theme-options'
@@ -63,7 +64,10 @@ export function MobileSidebar({
   const close = () => onOpenChange(false)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-[300px] gap-6 overflow-y-auto bg-sidebar px-4 py-5 lg:hidden">
+      <SheetContent
+        side="left"
+        className="w-[300px] gap-6 overflow-y-auto bg-sidebar px-4 pt-[calc(1.25rem+var(--safe-top))] pb-[calc(1.25rem+var(--safe-bottom))] lg:hidden"
+      >
         <SheetTitle className="sr-only">Menú</SheetTitle>
         <SheetDescription className="sr-only">Mini calendario, progreso y categorías</SheetDescription>
         <SidebarContent
@@ -231,6 +235,8 @@ function SidebarContent({ view, date, agenda, onSelectDate, onAction }: Props & 
           </div>
         ))}
       </div>
+
+      <DownloadAppCard />
 
       <CategoryDialog
         open={editing !== null}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pulsso</string>
+    <string name="title_activity_main">Pulsso</string>
+    <string name="package_name">online.pulsso.app</string>
+    <string name="custom_url_scheme">online.pulsso.app</string>
+</resources>

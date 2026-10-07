@@ -4,5 +4,7 @@ coverage
 .env
 .env.*
 !.env.example
+# Build de Android: solo la URL pública de la API, sin secretos
+!.env.mobile
 *.log
 .DS_Store

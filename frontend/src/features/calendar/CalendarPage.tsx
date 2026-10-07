@@ -42,7 +42,7 @@ export function CalendarPage({ view, section }: { view: View; section?: Section 
 
   return (
     <CalendarActionsContext.Provider value={actions}>
-      <div className="flex h-svh overflow-hidden">
+      <div className="flex h-app overflow-hidden">
         <Sidebar view={view} date={nav.date} agenda={agenda.data} onSelectDate={(d) => nav.go(view, d)} />
         <main className="flex min-w-0 flex-1 flex-col">
           <Toolbar
@@ -91,7 +91,7 @@ export function CalendarPage({ view, section }: { view: View; section?: Section 
       <Button
         size="icon"
         aria-label="Nuevo evento"
-        className="fixed right-5 bottom-5 z-40 size-12 rounded-full shadow-lg lg:hidden"
+        className="fixed right-5 bottom-[calc(1.25rem+var(--safe-bottom))] z-40 size-12 rounded-full shadow-lg lg:hidden"
         onClick={() => setEditor({ mode: 'create', kind: 'event', recurrence: 'normal', date: toKey(new Date()) })}
       >
         <Plus className="size-5" />

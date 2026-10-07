@@ -41,7 +41,7 @@ export function ProjectPage() {
 
   return (
     <CalendarActionsContext.Provider value={actions}>
-      <div className="flex h-svh flex-col overflow-hidden">
+      <div className="flex h-app flex-col overflow-hidden">
         {project.isPending ? (
           <>
             <header className="flex h-[68px] items-center gap-3 border-b px-4">

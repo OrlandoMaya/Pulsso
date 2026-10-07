@@ -38,8 +38,8 @@ services:
       PORT: "4000"
       # Detrás de Caddy o nginx: la IP real del cliente viene en X-Forwarded-For (límite de intentos de login)
       TRUST_PROXY: "1"
-      # La app llama a la API desde su propio dominio
-      CORS_ORIGIN: https://${WEB_DOMAIN}
+      # La web llama a la API desde su propio dominio; la app de Android (Capacitor), desde https://localhost
+      CORS_ORIGIN: https://${WEB_DOMAIN},https://localhost
       # Enlaces de los correos de recuperación de contraseña
       APP_URL: https://${WEB_DOMAIN}
     # Sin puerto público: el mundo entra por Caddy o nginx. Desde el servidor: curl localhost:4000/api/health

@@ -24,6 +24,8 @@ FROM nginx:1.29-alpine AS runtime
 ENV API_UPSTREAM=http://backend:4000
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/frontend/dist /usr/share/nginx/html
+# APK de Android para descargar desde la web (pnpm android:apk lo genera)
+COPY frontend/downloads/ /usr/share/nginx/html/downloads/
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1

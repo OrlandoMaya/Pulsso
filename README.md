@@ -102,6 +102,39 @@ docker build -f backend/Dockerfile -t pulsso-backend .
 docker build -f frontend/Dockerfile -t pulsso-frontend .
 ```
 
+## App móvil
+
+**PWA:** la web se puede instalar desde Chrome (menú ⋮ → *Instalar app*) y funciona sin conexión para
+lo ya cargado. Los iconos salen de `frontend/public/favicon.svg` con `pnpm --filter @pulsso/frontend generate-pwa-assets`.
+
+**Android (Capacitor):** el proyecto nativo está en `frontend/android`. La app se compila con `--mode mobile`
+(`frontend/.env.mobile`) y llama a `https://calendar-api.pulsso.online`; por eso la API acepta el origen
+`https://localhost` en `CORS_ORIGIN` (ya puesto en `docker-compose.yml`).
+
+```bash
+cd frontend
+pnpm android:sync    # compila la web y la copia a android/ (hazlo tras cada cambio)
+pnpm android:open    # abre Android Studio: ▶ para el emulador o tu teléfono
+pnpm android:run     # o compilar e instalar directo en el dispositivo conectado
+```
+
+- Gradle está en 9.1 porque Android Studio trae Java 25 (Gradle 8 no lo soporta).
+
+**Descarga desde la web (sin Play Store):** la web ofrece el APK en `/downloads/pulsso.apk` (enlace en el
+login y tarjeta en la barra lateral; dentro de la app no se muestra). Para publicar una versión nueva:
+
+1. Sube `versionCode` (+1) y `versionName` en `frontend/android/app/build.gradle`. Si no, Android no la
+   instala como actualización.
+2. `cd frontend && pnpm android:apk`: compila el APK firmado en `frontend/downloads/pulsso.apk`.
+3. Commit del APK y en el servidor `docker compose up -d --build frontend`.
+
+La firma está en `frontend/android/pulsso-release.jks` + `keystore.properties` (fuera de git).
+**Respáldalos juntos** (gestor de contraseñas, USB…): si se pierden, las nuevas versiones no se podrán
+instalar encima y cada usuario tendría que desinstalar la app (perdiendo la sesión) para instalar la nueva.
+
+Al instalar, Android pedirá permitir *instalar apps de origen desconocido* para el navegador; es normal
+fuera de la Play Store.
+
 ## Pruebas y calidad
 
 ```bash

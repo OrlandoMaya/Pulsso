@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DownloadAppLink } from '../app-download/DownloadApp'
 import { AuthLayout, FormError } from './AuthLayout'
 import { useAuth } from './auth-context'
 
@@ -139,6 +140,8 @@ export function LoginPage() {
           <Lock className="size-4" />
           Cada cuenta ve solo su propio calendario.
         </p>
+        <DownloadAppLink />
+
       </form>
     </AuthLayout>
   )

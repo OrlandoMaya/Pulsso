@@ -7,7 +7,7 @@ import { ThemeToggle } from '../theme/ThemeToggle'
 /** Marco común de las pantallas sin sesión: panel de marca a la izquierda y el formulario a la derecha */
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div className="relative flex min-h-svh">
+    <div className="relative flex min-h-app">
       <ThemeToggle className="absolute top-4 right-4" />
       <BrandPanel />
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">

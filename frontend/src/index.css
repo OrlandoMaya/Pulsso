@@ -102,9 +102,34 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /*
+   * Zonas seguras (barra de estado, barra de navegación, notch). En la web valen 0.
+   * En Android, Capacitor inyecta --safe-area-inset-* porque env() falla en WebViews antiguos.
+   */
+  :root {
+    --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+    --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+    --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /*
+   * El fondo llega hasta los bordes; el contenido queda fuera de las barras del sistema.
+   * En #root y no en body: al abrir menús y diálogos, Radix reescribe el padding de body.
+   */
+  #root {
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  }
+}
+
+/* Alto de pantalla descontando las zonas seguras: usar en lugar de h-svh / min-h-svh */
+@utility h-app {
+  height: calc(100svh - var(--safe-top) - var(--safe-bottom));
+}
+@utility min-h-app {
+  min-height: calc(100svh - var(--safe-top) - var(--safe-bottom));
 }
 
 /* Latido de lo que está en progreso: un anillo que se expande y se apaga */

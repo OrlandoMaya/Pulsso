@@ -371,7 +371,7 @@ function Canvas({ project, onSaveState, onProgress }: Props) {
         <Sheet open={!!inspector} onOpenChange={(o) => !o && clearSelection()}>
           <SheetContent
             side="bottom"
-            className="max-h-[80svh] gap-0 overflow-y-auto rounded-t-2xl p-5"
+            className="max-h-[80svh] gap-0 overflow-y-auto rounded-t-2xl p-5 pb-[calc(1.25rem+var(--safe-bottom))]"
             // Sin abrir el teclado al tocar un elemento
             onOpenAutoFocus={(e) => e.preventDefault()}
           >

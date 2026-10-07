@@ -9,7 +9,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="grid h-svh place-items-center text-muted-foreground">
+      <div className="grid h-app place-items-center text-muted-foreground">
         <Loader2 className="size-6 animate-spin" aria-label="Cargando" />
       </div>
     )
