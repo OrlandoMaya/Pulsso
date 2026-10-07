@@ -56,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         start(await api<Session>('/auth/login', { method: 'POST', body: { email, password } })),
       register: async (name, email, password) =>
         start(await api<Session>('/auth/register', { method: 'POST', body: { name, email, password } })),
+      resetPassword: async (token, password) =>
+        start(await api<Session>('/auth/reset-password', { method: 'POST', body: { token, password } })),
     }),
     [status, user, logout, start],
   )

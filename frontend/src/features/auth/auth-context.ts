@@ -6,6 +6,8 @@ export interface AuthState {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
+  /** Cambia la contraseña con el token del correo y abre sesión */
+  resetPassword: (token: string, password: string) => Promise<void>
   logout: () => void
 }
 

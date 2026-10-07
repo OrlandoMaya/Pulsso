@@ -4,8 +4,10 @@ import { Toaster } from '@/components/ui/sonner'
 import { ApiError } from '@/lib/api'
 import { toKey } from '@/lib/dates'
 import { AuthProvider } from './features/auth/AuthProvider'
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RequireAuth } from './features/auth/RequireAuth'
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
 import { ThemeProvider } from './features/theme/ThemeProvider'
 import { useTheme } from './features/theme/theme-context'
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
     element: <Root />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/recuperar', element: <ForgotPasswordPage /> },
+      { path: '/restablecer', element: <ResetPasswordPage /> },
       {
         element: (
           <RequireAuth>

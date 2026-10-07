@@ -23,6 +23,34 @@ class EnvironmentVariables {
   @IsString()
   CORS_ORIGIN?: string;
 
+  /** URL pública del frontend, para los enlaces de los correos (por defecto, el primer CORS_ORIGIN) */
+  @IsOptional()
+  @IsString()
+  APP_URL?: string;
+
+  /** SMTP para los correos de recuperación; sin SMTP_HOST se escriben en el log */
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  SMTP_PORT?: number;
+
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PASS?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_FROM?: string;
+
   /** Número de proxies de confianza delante de la API (1 con nginx) */
   @IsOptional()
   @IsInt()

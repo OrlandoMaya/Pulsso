@@ -12,7 +12,15 @@ export class User {
 
   @Prop({ required: true, select: false })
   passwordHash: string;
+
+  /** SHA-256 del token de recuperación de contraseña (el token solo viaja en el correo) */
+  @Prop({ select: false })
+  resetTokenHash?: string;
+
+  @Prop({ select: false })
+  resetTokenExpires?: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.index({ resetTokenHash: 1 }, { sparse: true });

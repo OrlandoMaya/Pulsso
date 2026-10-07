@@ -3,6 +3,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Connection } from 'mongoose';
 import request from 'supertest';
+import { MailService } from '../src/mail/mail.service';
 import { createApp } from './create-app';
 
 /**
@@ -68,6 +69,49 @@ describe('Pulsso API (e2e)', () => {
       .auth(login.body.accessToken, { type: 'bearer' })
       .expect(200);
     expect(me.body.email).toBe('ana@pulsso.dev');
+  });
+
+  it('recuperar contraseña con un enlace de un solo uso', async () => {
+    await register('olvido@pulsso.dev');
+    const send = jest.spyOn(app.get(MailService), 'send').mockResolvedValue();
+
+    // Misma respuesta exista o no la cuenta, y solo se envía correo si existe
+    await http
+      .post('/api/auth/forgot-password')
+      .send({ email: 'nadie@pulsso.dev' })
+      .expect(200, { ok: true });
+    expect(send).not.toHaveBeenCalled();
+    await http
+      .post('/api/auth/forgot-password')
+      .send({ email: 'OLVIDO@pulsso.dev' })
+      .expect(200, { ok: true });
+    expect(send).toHaveBeenCalledTimes(1);
+    const mail = send.mock.calls[0][0];
+    expect(mail.to).toBe('olvido@pulsso.dev');
+    const token = /token=([0-9a-f]{64})/.exec(mail.text)![1];
+
+    await http.post('/api/auth/reset-password').send({ token, password: 'corta' }).expect(400);
+    const reset = await http
+      .post('/api/auth/reset-password')
+      .send({ token, password: 'nueva-clave-1' })
+      .expect(200);
+    expect(reset.body.accessToken).toBeDefined();
+    expect(reset.body.user.resetTokenHash).toBeUndefined();
+
+    // El enlace ya no sirve y la contraseña cambió
+    await http
+      .post('/api/auth/reset-password')
+      .send({ token, password: 'otra-clave-2' })
+      .expect(400);
+    await http
+      .post('/api/auth/login')
+      .send({ email: 'olvido@pulsso.dev', password: 'secreta123' })
+      .expect(401);
+    await http
+      .post('/api/auth/login')
+      .send({ email: 'olvido@pulsso.dev', password: 'nueva-clave-1' })
+      .expect(200);
+    send.mockRestore();
   });
 
   it('agenda del día con tareas y eventos tachables, aislada por usuario', async () => {

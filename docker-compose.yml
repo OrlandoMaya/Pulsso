@@ -40,6 +40,8 @@ services:
       TRUST_PROXY: "1"
       # La app llama a la API desde su propio dominio
       CORS_ORIGIN: https://${WEB_DOMAIN}
+      # Enlaces de los correos de recuperación de contraseña
+      APP_URL: https://${WEB_DOMAIN}
     # Sin puerto público: el mundo entra por Caddy o nginx. Desde el servidor: curl localhost:4000/api/health
     ports:
       - "127.0.0.1:4000:4000"

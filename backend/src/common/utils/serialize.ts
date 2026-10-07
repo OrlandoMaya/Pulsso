@@ -7,6 +7,8 @@ export const toJSONOptions = {
     delete ret._id;
     delete ret.userId;
     delete ret.passwordHash;
+    delete ret.resetTokenHash;
+    delete ret.resetTokenExpires;
     return ret;
   },
 };
