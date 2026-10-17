@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { AlignLeft, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { parseAmount } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { CategorySelect } from './CategorySelect'
@@ -11,10 +13,18 @@ import { useCreateExpense } from './queries'
 export function AddExpense({
   date,
   onDateChange,
+  defaultCategoryId = null,
+  onAdded,
+  autoFocus,
+  className,
 }: {
   date: string
   /** Si se pasa, muestra un selector de día */
   onDateChange?: (d: string) => void
+  defaultCategoryId?: string | null
+  onAdded?: () => void
+  autoFocus?: boolean
+  className?: string
 }) {
   const create = useCreateExpense()
   const [title, setTitle] = useState('')
@@ -22,7 +32,7 @@ export function AddExpense({
   const [description, setDescription] = useState('')
   const [withDescription, setWithDescription] = useState(false)
   // Se recuerda la última categoría usada para el siguiente gasto
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState<string | null>(defaultCategoryId)
   const [error, setError] = useState('')
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -42,6 +52,7 @@ export function AddExpense({
           setDescription('')
           setWithDescription(false)
           titleRef.current?.focus()
+          onAdded?.()
         },
       },
     )
@@ -51,12 +62,16 @@ export function AddExpense({
     <form
       onSubmit={submit}
       noValidate
-      className="flex flex-col gap-2 rounded-xl border border-dashed bg-card/50 p-3 focus-within:border-solid focus-within:border-ring"
+      className={cn(
+        'flex flex-col gap-2 rounded-xl border border-dashed bg-card/50 p-3 focus-within:border-solid focus-within:border-ring',
+        className,
+      )}
     >
       <div className="flex items-center gap-3">
         <Plus className="size-[18px] shrink-0 text-muted-foreground" />
         <input
           ref={titleRef}
+          autoFocus={autoFocus}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Agregar gasto…"
@@ -119,5 +134,61 @@ export function AddExpense({
         </Button>
       </div>
     </form>
+  )
+}
+
+/** "Agregar gasto" desde el panel de finanzas: elige día, nombre, monto y categoría */
+export function AddExpenseDialog({
+  open,
+  onOpenChange,
+  defaultDate,
+  defaultCategoryId,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  defaultDate: string
+  defaultCategoryId?: string | null
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Agregar gasto</DialogTitle>
+          <DialogDescription>Registra lo que gastaste y el día en que fue.</DialogDescription>
+        </DialogHeader>
+        {open && (
+          <DialogExpenseForm
+            defaultDate={defaultDate}
+            defaultCategoryId={defaultCategoryId}
+            onAdded={() => {
+              toast.success('Gasto agregado')
+              onOpenChange(false)
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DialogExpenseForm({
+  defaultDate,
+  defaultCategoryId,
+  onAdded,
+}: {
+  defaultDate: string
+  defaultCategoryId?: string | null
+  onAdded: () => void
+}) {
+  const [date, setDate] = useState(defaultDate)
+  return (
+    <AddExpense
+      date={date}
+      onDateChange={setDate}
+      defaultCategoryId={defaultCategoryId}
+      onAdded={onAdded}
+      autoFocus
+      className="border-solid"
+    />
   )
 }

@@ -53,9 +53,31 @@ export function useUpdateExpense() {
       api<Expense>(`/expenses/${id}`, { method: 'PATCH', body: patch }),
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ['expenses'] })
-      qc.setQueriesData<Expense[]>({ queryKey: ['expenses'] }, (list) =>
-        list?.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-      )
+      const moved = patch.date
+        ? qc
+            .getQueriesData<Expense[]>({ queryKey: ['expenses'] })
+            .flatMap(([, list]) => list ?? [])
+            .find((e) => e.id === id)
+        : undefined
+      for (const [key, list] of qc.getQueriesData<Expense[]>({ queryKey: ['expenses'] })) {
+        if (!list) continue
+        const [, from, to] = key as ReturnType<typeof financeKeys.list>
+        if (moved && patch.date) {
+          // Al cambiar de día: sale de las listas que ya no lo incluyen y entra en las que sí
+          const next = { ...moved, ...patch }
+          const rest = list.filter((e) => e.id !== id)
+          const inRange = next.date >= from && next.date <= to
+          qc.setQueryData<Expense[]>(
+            key,
+            inRange ? [...rest, next].sort((a, b) => b.date.localeCompare(a.date)) : rest,
+          )
+        } else {
+          qc.setQueryData<Expense[]>(
+            key,
+            list.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+          )
+        }
+      }
     },
     onError,
     onSettled: () => refresh(qc),

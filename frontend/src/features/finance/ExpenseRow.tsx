@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { CalendarDays, X } from 'lucide-react'
 import { COLORS } from '@/lib/colors'
 import { formatMoney, parseAmount, toTyping } from '@/lib/money'
 import type { Expense } from '@/lib/types'
@@ -8,8 +8,23 @@ import { CategorySelect } from './CategorySelect'
 import { MoneyInput } from './MoneyInput'
 import { useDeleteExpense, useExpenseCategories, useUpdateExpense } from './queries'
 
-/** Un gasto: nombre, descripción y monto se editan ahí mismo */
-export function ExpenseRow({ expense, compact = false }: { expense: Expense; compact?: boolean }) {
+/** Un gasto: nombre, descripción, monto y día se editan ahí mismo */
+export function ExpenseRow({
+  expense,
+  compact = false,
+  handle,
+  rowRef,
+  style,
+  className,
+}: {
+  expense: Expense
+  compact?: boolean
+  /** Agarradera para arrastrarlo a otro día */
+  handle?: React.ReactNode
+  rowRef?: React.Ref<HTMLLIElement>
+  style?: React.CSSProperties
+  className?: string
+}) {
   const update = useUpdateExpense()
   const categories = useExpenseCategories()
   const category = categories.data?.find((c) => c.id === expense.categoryId)
@@ -44,7 +59,17 @@ export function ExpenseRow({ expense, compact = false }: { expense: Expense; com
   }
 
   return (
-    <li className={cn('group flex items-start gap-3 rounded-xl border bg-card shadow-xs', compact ? 'p-2.5' : 'p-3')}>
+    <li
+      ref={rowRef}
+      style={style}
+      className={cn(
+        'group flex items-start gap-3 rounded-xl border bg-card shadow-xs',
+        compact ? 'p-2.5' : 'p-3',
+        handle && (compact ? 'pl-1' : 'pl-1.5'),
+        className,
+      )}
+    >
+      {handle}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <input
           value={title}
@@ -89,14 +114,56 @@ export function ExpenseRow({ expense, compact = false }: { expense: Expense; com
           )}
         />
       </div>
+      <div className="flex shrink-0 flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => remove.mutate(expense.id)}
+          aria-label={`Eliminar ${expense.title}`}
+          className={rowAction}
+        >
+          <X className="size-4" />
+        </button>
+        <MoveDay expense={expense} onMove={(date) => update.mutate({ id: expense.id, patch: { date } })} />
+      </div>
+    </li>
+  )
+}
+
+const rowAction =
+  'relative grid size-6 shrink-0 cursor-pointer place-items-center rounded text-muted-foreground hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100'
+
+/** Mover el gasto a otro día con el selector de fecha del sistema */
+function MoveDay({ expense, onMove }: { expense: Expense; onMove: (date: string) => void }) {
+  const input = useRef<HTMLInputElement>(null)
+  const open = () => {
+    const el = input.current
+    if (!el) return
+    try {
+      el.showPicker()
+    } catch {
+      el.focus()
+    }
+  }
+  return (
+    <span className="relative">
       <button
         type="button"
-        onClick={() => remove.mutate(expense.id)}
-        aria-label={`Eliminar ${expense.title}`}
-        className="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-muted-foreground hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+        onClick={open}
+        aria-label={`Mover ${expense.title} a otro día`}
+        title="Mover a otro día"
+        className={rowAction}
       >
-        <X className="size-4" />
+        <CalendarDays className="size-4" />
       </button>
-    </li>
+      <input
+        ref={input}
+        type="date"
+        tabIndex={-1}
+        aria-hidden
+        value={expense.date}
+        onChange={(e) => e.target.value && e.target.value !== expense.date && onMove(e.target.value)}
+        className="pointer-events-none absolute inset-0 size-full opacity-0"
+      />
+    </span>
   )
 }

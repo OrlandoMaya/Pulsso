@@ -1,8 +1,22 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  pointerWithin,
+  rectIntersection,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Table2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GripVertical, Plus, Table2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalize, fromKey, toKey } from '@/lib/dates'
@@ -11,11 +25,11 @@ import { COLORS } from '@/lib/colors'
 import type { CalendarColor, Expense } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useCalendarActions } from '../calendar/editor-context'
-import { AddExpense } from './AddExpense'
+import { AddExpense, AddExpenseDialog } from './AddExpense'
 import { CategoriesPanel } from './CategoriesPanel'
 import { CategoryStats, OverBudgetAlert } from './CategoryStats'
 import { ExpenseRow } from './ExpenseRow'
-import { useExpenses, useExpenseSummary } from './queries'
+import { useExpenses, useExpenseSummary, useUpdateExpense } from './queries'
 import { SpendingChart } from './SpendingChart'
 
 const MONTH_RE = /^\d{4}-\d{2}$/
@@ -52,6 +66,8 @@ function FinanceMonth({
   const expenses = useExpenses(from, to)
   const [newDate, setNewDate] = useState(today >= from && today <= to ? today : from)
   const [showTable, setShowTable] = useState(false)
+  // Diálogo de "Agregar gasto": null = cerrado, con la categoría que ya trae elegida
+  const [adding, setAdding] = useState<{ categoryId: string | null } | null>(null)
 
   const monthName = format(month, 'LLLL', { locale: es })
   const s = summary.data
@@ -100,12 +116,27 @@ function FinanceMonth({
               </button>
             ))}
           </div>
+          <Button onClick={() => setAdding({ categoryId: null })}>
+            <Plus />
+            Agregar gasto
+          </Button>
         </div>
 
         {s && <OverBudgetAlert stats={s.byCategory} monthName={monthName} />}
 
+        <AddExpenseDialog
+          open={adding !== null}
+          onOpenChange={(o) => !o && setAdding(null)}
+          defaultDate={newDate}
+          defaultCategoryId={adding?.categoryId}
+        />
+
         {tab === 'categorias' ? (
-          <CategoriesPanel stats={s?.byCategory} monthName={capitalize(monthName)} />
+          <CategoriesPanel
+            stats={s?.byCategory}
+            monthName={capitalize(monthName)}
+            onAddExpense={(categoryId) => setAdding({ categoryId })}
+          />
         ) : (
           <>
             {/* Cifras: una principal y el resto en tarjetas */}
@@ -262,27 +293,110 @@ function DaysTable({ days }: { days: { date: string; total: number; count: numbe
   )
 }
 
-/** Lista agrupada por día, del más reciente al más antiguo, con el total de cada día */
+const dayLabel = (date: string) => capitalize(format(fromKey(date), "EEEE d 'de' LLLL", { locale: es }))
+
+/** Lista agrupada por día, del más reciente al más antiguo, con el total de cada día.
+ *  Un gasto se arrastra de un día a otro */
 function ExpensesByDay({ expenses }: { expenses: Expense[] }) {
+  const update = useUpdateExpense()
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  )
   const groups = new Map<string, Expense[]>()
   for (const e of expenses) groups.set(e.date, [...(groups.get(e.date) ?? []), e])
+
+  const title = (id: string | number) => expenses.find((e) => e.id === id)?.title ?? 'el gasto'
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const expense = expenses.find((e) => e.id === active.id)
+    const date = over?.id as string | undefined
+    if (!expense || !date || date === expense.date) return
+    update.mutate({ id: expense.id, patch: { date } })
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      {[...groups].map(([date, list]) => (
-        <div key={date} className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between px-1 text-sm">
-            <span className="font-medium">{capitalize(format(fromKey(date), "EEEE d 'de' LLLL", { locale: es }))}</span>
-            <span className="font-mono text-muted-foreground tabular-nums">
-              {formatMoney(list.reduce((n, e) => n + e.amount, 0))}
-            </span>
-          </div>
-          <ul className="flex flex-col gap-1.5">
-            {list.map((e) => (
-              <ExpenseRow key={e.id} expense={e} />
-            ))}
-          </ul>
-        </div>
-      ))}
+    <DndContext
+      sensors={sensors}
+      // Con el teclado no hay puntero: el día que más se cruce
+      collisionDetection={(args) => {
+        const hits = pointerWithin(args)
+        return hits.length ? hits : rectIntersection(args)
+      }}
+      onDragEnd={onDragEnd}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            'Para moverlo a otro día, presiona Espacio o Enter, usa las flechas para elegir el día y Espacio o Enter para soltarlo, o Escape para cancelar.',
+        },
+        announcements: {
+          onDragStart: ({ active }) => `Tomaste ${title(active.id)}.`,
+          onDragOver: ({ active, over }) =>
+            over ? `${title(active.id)} sobre el ${dayLabel(String(over.id))}.` : `${title(active.id)} fuera de los días.`,
+          onDragEnd: ({ active, over }) =>
+            over ? `Moviste ${title(active.id)} al ${dayLabel(String(over.id))}.` : `Soltaste ${title(active.id)}.`,
+          onDragCancel: ({ active }) => `Cancelado. ${title(active.id)} se quedó en su día.`,
+        },
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        {[...groups].map(([date, list]) => (
+          <DayGroup key={date} date={date} list={list} />
+        ))}
+      </div>
+    </DndContext>
+  )
+}
+
+function DayGroup({ date, list }: { date: string; list: Expense[] }) {
+  const { setNodeRef, isOver, active } = useDroppable({ id: date })
+  const from = active && list.some((e) => e.id === active.id)
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        '-m-1.5 flex flex-col gap-1.5 rounded-2xl p-1.5 transition-colors',
+        isOver && !from && 'bg-primary/5 ring-2 ring-ring/40',
+      )}
+    >
+      <div className="flex items-center justify-between px-1 text-sm">
+        <span className="font-medium">{dayLabel(date)}</span>
+        <span className="font-mono text-muted-foreground tabular-nums">
+          {formatMoney(list.reduce((n, e) => n + e.amount, 0))}
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {list.map((e) => (
+          <DraggableExpense key={e.id} expense={e} />
+        ))}
+      </ul>
     </div>
+  )
+}
+
+function DraggableExpense({ expense }: { expense: Expense }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
+    id: expense.id,
+  })
+  return (
+    <ExpenseRow
+      expense={expense}
+      rowRef={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform) }}
+      className={cn('relative', isDragging && 'z-10 cursor-grabbing border-ring shadow-lg ring-2 ring-ring/30')}
+      handle={
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label={`Arrastrar ${expense.title} a otro día`}
+          title="Arrastra a otro día"
+          className="mt-0.5 flex h-6 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground/50 outline-none hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <GripVertical className="size-4" />
+        </button>
+      }
+    />
   )
 }

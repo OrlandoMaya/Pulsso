@@ -11,7 +11,16 @@ import { DeleteExpenseCategoryDialog, ExpenseCategoryDialog } from './ExpenseCat
 import { useExpenseCategories } from './queries'
 
 /** Panel para crear, editar y borrar categorías de gastos, con lo gastado en el mes */
-export function CategoriesPanel({ stats, monthName }: { stats?: CategoryStat[]; monthName: string }) {
+export function CategoriesPanel({
+  stats,
+  monthName,
+  onAddExpense,
+}: {
+  stats?: CategoryStat[]
+  monthName: string
+  /** Abre "Agregar gasto" con esa categoría elegida */
+  onAddExpense?: (categoryId: string) => void
+}) {
   const categories = useExpenseCategories()
   const [editing, setEditing] = useState<ExpenseCategory | 'new' | null>(null)
   const [deleting, setDeleting] = useState<ExpenseCategory | null>(null)
@@ -60,6 +69,12 @@ export function CategoriesPanel({ stats, monthName }: { stats?: CategoryStat[]; 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {onAddExpense && (
+                        <DropdownMenuItem onSelect={() => onAddExpense(c.id)}>
+                          <Plus />
+                          Agregar gasto
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onSelect={() => setEditing(c)}>
                         <Pencil />
                         Editar
